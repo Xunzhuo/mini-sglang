@@ -75,7 +75,7 @@ graph LR
     end
     
     subgraph "页表机制"
-        PT[页表<br/>虚拟页 → 物理页框]
+        PT[页表<br/>虚拟页到物理页框]
     end
     
     subgraph "物理内存"  
@@ -148,7 +148,7 @@ graph TB
     end
     
     subgraph "块表"
-        BT[块表映射<br/>0 → 物理块5<br/>1 → 物理块2<br/>2 → 物理块8]
+        BT[块表映射<br/>0到物理块5<br/>1到物理块2<br/>2到物理块8]
     end
     
     subgraph "物理显存"

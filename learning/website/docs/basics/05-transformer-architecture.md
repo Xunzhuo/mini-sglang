@@ -180,14 +180,14 @@ graph LR
 graph TB
     subgraph DecoderOnly["Decoder-only 100%利用率"]
         D1["今天天气真好"]
-        D2["Loss = L(今→天) + L(天→天) + L(天→气) + L(气→真) + L(真→好)"]
+        D2["Loss = L_今天 + L_天天 + L_天气 + L_气真 + L_真好"]
         D1 --> D2
         D2 --> D3["每个token都贡献梯度!"]
     end
 
     subgraph EncoderOnly["Encoder-only 仅15%"]
         E1["今天朦真好"]
-        E2["Loss = L(朦→天气)"]
+        E2["Loss = L_朦天气"]
         E1 --> E2
         E2 --> E3["只有15%的token贡献梯度"]
     end

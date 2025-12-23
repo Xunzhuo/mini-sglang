@@ -439,10 +439,10 @@ graph TB
 ```mermaid
 graph TB
     subgraph 2020-2023: 规模竞赛
-        S1[参数规模<br/>1B → 1000B]
-        S2[训练数据<br/>100B → 10T tokens]
+        S1[参数规模<br/>1B 到 1000B]
+        S2[训练数据<br/>100B 到 10T tokens]
     end
-    
+
     subgraph 2024-2025: 效率优化
         E1[稀疏激活<br/>MoE架构]
         E2[推理优化<br/>量化、蒸馏]
