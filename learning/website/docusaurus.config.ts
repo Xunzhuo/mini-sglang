@@ -1,0 +1,109 @@
+import {themes as prismThemes} from 'prism-react-renderer';
+import type {Config} from '@docusaurus/types';
+import type * as Preset from '@docusaurus/preset-classic';
+
+const config: Config = {
+  title: '从零学习 LLM 推理',
+  tagline: '从 Mini-SGLang 理解大语言模型推理',
+  favicon: 'img/favicon.ico',
+
+  url: 'https://your-site.netlify.app',
+  baseUrl: '/',
+
+  organizationName: 'mini-sglang',
+  projectName: 'llm-learning-handbook',
+
+  onBrokenLinks: 'warn',
+  onBrokenMarkdownLinks: 'warn',
+
+  i18n: {
+    defaultLocale: 'zh-CN',
+    locales: ['zh-CN'],
+  },
+
+  presets: [
+    [
+      'classic',
+      {
+        docs: {
+          sidebarPath: './sidebars.ts',
+          editUrl: 'https://github.com/sgl-project/mini-sglang/tree/main/learning/website/',
+        },
+        blog: false,
+        theme: {
+          customCss: './src/css/custom.css',
+        },
+      } satisfies Preset.Options,
+    ],
+  ],
+
+  markdown: {
+    mermaid: true,
+  },
+  themes: ['@docusaurus/theme-mermaid'],
+
+  themeConfig: {
+    image: 'img/social-card.jpg',
+    navbar: {
+      title: '从零学习 LLM',
+      logo: {
+        alt: 'Mini-SGLang Logo',
+        src: 'img/logo.svg',
+      },
+      items: [
+        {
+          type: 'docSidebar',
+          sidebarId: 'tutorialSidebar',
+          position: 'left',
+          label: '教程',
+        },
+        {
+          href: 'https://github.com/sgl-project/mini-sglang',
+          label: 'GitHub',
+          position: 'right',
+        },
+      ],
+    },
+    footer: {
+      style: 'dark',
+      links: [
+        {
+          title: '文档',
+          items: [
+            {
+              label: '开始学习',
+              to: '/docs/intro',
+            },
+          ],
+        },
+        {
+          title: '社区',
+          items: [
+            {
+              label: 'GitHub',
+              href: 'https://github.com/sgl-project/mini-sglang',
+            },
+          ],
+        },
+        {
+          title: '更多',
+          items: [
+            {
+              label: 'SGLang 官网',
+              href: 'https://sgl-project.github.io/',
+            },
+          ],
+        },
+      ],
+      copyright: `Copyright © ${new Date().getFullYear()} Mini-SGLang Learning Handbook. Built with Docusaurus.`,
+    },
+    prism: {
+      theme: prismThemes.github,
+      darkTheme: prismThemes.dracula,
+      additionalLanguages: ['bash', 'python', 'yaml', 'json'],
+    },
+  } satisfies Preset.ThemeConfig,
+};
+
+export default config;
+

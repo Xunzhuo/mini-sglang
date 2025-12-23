@@ -1,0 +1,143 @@
+/* ============================================
+   Hero Banner - 简约黑白风格
+   ============================================ */
+.heroBanner {
+  padding: 5rem 0;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  background: #ffffff;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='dark'] .heroBanner {
+  background: #000000;
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.heroBanner :global(.hero__title) {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #000000;
+}
+
+[data-theme='dark'] .heroBanner :global(.hero__title) {
+  color: #ffffff;
+}
+
+.heroBanner :global(.hero__subtitle) {
+  font-size: 1.25rem;
+  font-weight: 400;
+  color: #666666;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+[data-theme='dark'] .heroBanner :global(.hero__subtitle) {
+  color: #999999;
+}
+
+@media screen and (max-width: 996px) {
+  .heroBanner {
+    padding: 3rem 2rem;
+  }
+
+  .heroBanner :global(.hero__title) {
+    font-size: 2rem;
+  }
+
+  .heroBanner :global(.hero__subtitle) {
+    font-size: 1rem;
+  }
+}
+
+/* ============================================
+   按钮组 - 简约风格
+   ============================================ */
+.buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.buttons :global(.button) {
+  font-size: 1rem;
+  padding: 0.75rem 1.5rem;
+}
+
+@media screen and (max-width: 996px) {
+  .buttons {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .buttons :global(.button) {
+    width: 100%;
+    max-width: 280px;
+  }
+}
+
+/* ============================================
+   特性卡片区域 - 简约风格
+   ============================================ */
+.features {
+  display: flex;
+  align-items: center;
+  padding: 4rem 0;
+  width: 100%;
+  background: #fafafa;
+}
+
+[data-theme='dark'] .features {
+  background: #0a0a0a;
+}
+
+.features .row {
+  justify-content: center;
+  gap: 1.5rem;
+}
+
+.features :global(.col) {
+  padding: 2rem;
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.2s ease;
+}
+
+.features :global(.col):hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='dark'] .features :global(.col) {
+  background: #000000;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='dark'] .features :global(.col):hover {
+  box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
+}
+
+.features h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: #000000;
+}
+
+[data-theme='dark'] .features h3 {
+  color: #ffffff;
+}
+
+.features p {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #666666;
+}
+
+[data-theme='dark'] .features p {
+  color: #999999;
+}
+
