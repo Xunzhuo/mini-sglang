@@ -4,7 +4,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: '从零学习 LLM 推理',
-  tagline: '从 Mini-SGLang 理解大语言模型推理',
+  tagline: '面向 LLM 初学者，从基础知识出发到 SGLang，理解大语言模型',
   favicon: 'img/favicon.ico',
 
   url: 'https://your-site.netlify.app',
@@ -95,7 +95,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} Mini-SGLang Learning Handbook. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} From Scratch to Master LLM.`,
     },
     prism: {
       theme: prismThemes.github,

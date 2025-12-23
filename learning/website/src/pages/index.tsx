@@ -36,8 +36,8 @@ export default function Home(): JSX.Element {
   const {siteConfig} = useDocusaurusContext();
   return (
     <Layout
-      title={`欢迎来到 ${siteConfig.title}`}
-      description="从零学习大语言模型推理系统 - Mini-SGLang 实战手册">
+      title={`${siteConfig.title}`}
+      description="从零学习LLM">
       <HomepageHeader />
       <main>
         <section className={styles.features}>
@@ -47,8 +47,7 @@ export default function Home(): JSX.Element {
                 <div className="text--center padding-horiz--md">
                   <Heading as="h3">系统化学习</Heading>
                   <p>
-                    8个章节全面覆盖LLM推理系统的核心技术栈，
-                    从项目架构到具体实现。
+                    从神经网络到大模型推理，完整的 LLM 学习路线
                   </p>
                 </div>
               </div>
@@ -56,8 +55,7 @@ export default function Home(): JSX.Element {
                 <div className="text--center padding-horiz--md">
                   <Heading as="h3">深入浅出</Heading>
                   <p>
-                    结合代码实例和架构图，理解分布式系统、
-                    GPU优化和注意力机制。
+                    从基础知识出发，最终从 LLM 推理实加深理解
                   </p>
                 </div>
               </div>
@@ -65,8 +63,7 @@ export default function Home(): JSX.Element {
                 <div className="text--center padding-horiz--md">
                   <Heading as="h3">实战导向</Heading>
                   <p>
-                    完整的部署指南和性能优化建议，
-                    快速上手生产级LLM推理服务。
+                    基于 SGLang 生产级推理框架，进行源码级学习
                   </p>
                 </div>
               </div>

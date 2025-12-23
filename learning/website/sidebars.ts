@@ -51,6 +51,18 @@ const sidebars: SidebarsConfig = {
             },
             {
               type: 'doc',
+              id: 'basics/transformer-architecture',
+              label: 'Transformer 架构演进',
+            },
+          ],
+        },
+        {
+          type: 'category',
+          label: '第二部分：LLM 核心概念',
+          collapsed: false,
+          items: [
+            {
+              type: 'doc',
               id: 'basics/tokenization',
               label: '分词器：文本到数字的桥梁',
             },
@@ -61,14 +73,14 @@ const sidebars: SidebarsConfig = {
             },
             {
               type: 'doc',
-              id: 'basics/transformer-architecture',
-              label: 'Transformer 架构演进',
+              id: 'basics/attention-mechanism',
+              label: '注意力机制深度解析',
             },
           ],
         },
         {
           type: 'category',
-          label: '第二部分：训练篇',
+          label: '第三部分：训练篇',
           collapsed: false,
           items: [
             {
@@ -79,7 +91,12 @@ const sidebars: SidebarsConfig = {
             {
               type: 'doc',
               id: 'basics/sft',
-              label: '监督微调：让模型学会对话',
+              label: '监督微调 (SFT)：让模型学会对话',
+            },
+            {
+              type: 'doc',
+              id: 'basics/11.5-rl-strategies',
+              label: 'RL策略：PPO、GRPO、DPO',
             },
             {
               type: 'doc',
@@ -89,13 +106,13 @@ const sidebars: SidebarsConfig = {
             {
               type: 'doc',
               id: 'basics/distributed-training',
-              label: '分布式训练：突破单卡限制',
+              label: '分布式训练策略',
             },
           ],
         },
         {
           type: 'category',
-          label: '第三部分：推理篇',
+          label: '第四部分：推理篇',
           collapsed: false,
           items: [
             {
@@ -106,32 +123,59 @@ const sidebars: SidebarsConfig = {
             {
               type: 'doc',
               id: 'basics/kv-cache',
-              label: '推理加速基石：KV Cache',
+              label: 'KV Cache',
             },
             {
               type: 'doc',
               id: 'basics/memory-management',
-              label: '显存管理：PagedAttention',
+              label: 'PagedAttention',
             },
             {
               type: 'doc',
               id: 'basics/scheduling',
-              label: '吞吐量飞跃：Continuous Batching',
+              label: 'Continuous Batching',
             },
             {
               type: 'doc',
               id: 'basics/radix-attention',
-              label: '前缀复用：Radix Attention',
+              label: 'Radix Attention',
             },
             {
               type: 'doc',
               id: 'basics/distributed-inference',
-              label: '分布式推理：Tensor Parallelism',
+              label: '分布式推理',
             },
             {
               type: 'doc',
               id: 'basics/quantization',
-              label: '模型量化：用更少资源运行大模型',
+              label: '模型量化',
+            },
+          ],
+        },
+        {
+          type: 'category',
+          label: '第五部分：进阶话题',
+          collapsed: false,
+          items: [
+            {
+              type: 'doc',
+              id: 'basics/moe',
+              label: 'MoE 混合专家模型',
+            },
+            {
+              type: 'doc',
+              id: 'basics/long-context',
+              label: '长上下文技术',
+            },
+            {
+              type: 'doc',
+              id: 'basics/multimodal',
+              label: 'Multi Modal 多模态大模型',
+            },
+            {
+              type: 'doc',
+              id: 'basics/semantic-routing',
+              label: '语义路由系统',
             },
           ],
         },
@@ -139,7 +183,7 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: '📖 推理实战',
+      label: '📖 SGLang 推理实战',
       collapsed: false,
       items: [
         {
@@ -188,4 +232,3 @@ const sidebars: SidebarsConfig = {
 };
 
 export default sidebars;
-
