@@ -1,375 +1,195 @@
 ---
 sidebar_position: 1
-title: 学习指南总览
-description: Mini-SGLang 完整学习系列概述
+title: 从零学习 LLM
+description: 一份系统性的大语言模型学习指南
 ---
 
-# LLM 学习指南
+# 从零学习 LLM
 
-## 📚 系列概述
+> 从神经网络基础到生产级推理系统，一份完整的大语言模型学习路线图。
 
-本学习指南系统地分析了Mini-SGLang项目的完整技术栈，从项目架构设计到具体实现细节，全面覆盖了一个现代LLM推理框架的核心技术。
+## 🎯 这份指南适合谁？
 
-### 🎯 学习目标
+- **AI 初学者**：想系统性了解大语言模型的完整技术栈
+- **算法工程师**：希望深入理解 LLM 训练与推理的底层原理
+- **系统工程师**：需要掌握高性能推理系统的设计与优化
+- **研究人员**：想快速建立 LLM 领域的知识框架
 
-通过本系列学习，你将掌握：
-- **LLM推理系统架构设计**：理解高性能推理系统的整体架构
-- **分布式计算技术**：掌握张量并行和分布式通信机制
-- **GPU优化技术**：了解CUDA内核和内存优化策略
-- **注意力机制实现**：深入理解多头注意力和位置编码
-- **系统集成部署**：学习生产级服务的构建和运维
+## 📚 内容概览
 
-### 📖 章节列表
-
-| 章节 | 标题 | 核心内容 | 难度 |
-|------|------|----------|------|
-| [第一章](chapter-01) | 项目概述与架构设计 | 整体架构、核心特性、性能基准 | ⭐☆☆☆☆ |
-| [第二章](chapter-02) | 核心数据结构与上下文管理 | 请求管理、批处理、缓存接口 | ⭐⭐☆☆☆ |
-| [第三章](chapter-03) | 分布式系统与通信机制 | 张量并行、NCCL通信、进程管理 | ⭐⭐⭐☆☆ |
-| [第四章](chapter-04) | 推理引擎与调度器系统 | 调度算法、CUDA图、重叠调度 | ⭐⭐⭐⭐☆ |
-| [第五章](chapter-05) | KV缓存管理与Radix树优化 | 缓存复用、Radix树、内存管理 | ⭐⭐⭐⭐☆ |
-| [第六章](chapter-06) | 高性能内核与CUDA优化 | JIT编译、内核优化、向量化 | ⭐⭐⭐⭐⭐ |
-| [第七章](chapter-07) | 模型层实现与注意力机制 | Transformer架构、RoPE、GQA | ⭐⭐⭐⭐☆ |
-| [第八章](chapter-08) | API服务器与系统集成 | FastAPI、OpenAI兼容、部署运维 | ⭐⭐⭐☆☆ |
-
-## 🏗️ 技术架构总览
-
-### 整体架构图
+本学习指南按照 LLM 的**发展脉络**和**技术层次**组织，分为两大模块：
 
 ```mermaid
 graph TB
-    A[客户端] --> B[API服务器]
-    B --> C[Tokenizer进程]
-    C --> D[调度器Rank 0]
-    D --> E[推理引擎Rank 0]
-    D --> F[调度器Rank 1]
-    F --> G[推理引擎Rank 1]
-    D --> H[调度器Rank N]
-    H --> I[推理引擎Rank N]
-    E --> J[Detokenizer进程]
-    G --> J
-    I --> J
-    J --> B
-    B --> A
+    subgraph 基础知识
+        A[深度学习基础] --> B[训练篇]
+        B --> C[推理篇]
+    end
     
-    D --> K[NCCL通信]
-    F --> K
-    H --> K
-    E --> K
-    G --> K
-    I --> K
+    subgraph 推理实战
+        D[Mini-SGLang 源码精读]
+    end
+    
+    C --> D
+    
+    style A fill:#e1f5fe
+    style B fill:#fff3e0
+    style C fill:#e8f5e9
+    style D fill:#fce4ec
 ```
 
-### 核心组件关系
+---
+
+## 🧠 第一模块：基础知识
+
+系统性地介绍 LLM 从原理到实践的核心知识点。
+
+### 第一部分：深度学习基础
+
+从最基本的概念出发，建立理解 LLM 的理论根基。
+
+| 文章 | 核心内容 | 你将学到 |
+|------|----------|----------|
+| [神经网络入门](basics/neural-network-basics) | 感知机、反向传播、梯度下降 | 理解深度学习的数学基础 |
+| [语言模型简史](basics/language-model-history) | N-gram → RNN → Transformer | 了解 LLM 的技术演进脉络 |
+| [分词器](basics/tokenization) | BPE、WordPiece、SentencePiece | 理解文本如何转化为模型输入 |
+| [位置编码](basics/positional-encoding) | 绝对位置、RoPE、ALiBi | 理解模型如何感知序列顺序 |
+| [Transformer 架构](basics/transformer-architecture) | Self-Attention、FFN、Layer Norm | 掌握现代 LLM 的核心架构 |
+
+### 第二部分：训练篇
+
+理解 LLM 能力的来源——从预训练到对齐。
+
+| 文章 | 核心内容 | 你将学到 |
+|------|----------|----------|
+| [预训练](basics/pretraining) | Next Token Prediction、Scaling Law | 理解 LLM 如何从海量数据中学习 |
+| [监督微调 (SFT)](basics/sft) | Instruction Tuning、LoRA | 掌握让模型学会对话的方法 |
+| [RLHF](basics/rlhf) | Reward Model、PPO、DPO | 理解 ChatGPT "好用"的秘密 |
+| [分布式训练](basics/distributed-training) | DP、FSDP、3D Parallelism | 了解大规模训练的工程实践 |
+
+### 第三部分：推理篇
+
+深入 LLM 推理系统的核心技术，为源码阅读做准备。
+
+| 文章 | 核心内容 | 你将学到 |
+|------|----------|----------|
+| [推理过程揭秘](basics/inference-process) | Prefill vs Decode、自回归生成 | 理解 LLM 推理的两个阶段 |
+| [KV Cache](basics/kv-cache) | 缓存机制、显存占用分析 | 理解推理加速的核心技术 |
+| [PagedAttention](basics/memory-management) | 虚拟内存、显存分页 | 掌握显存碎片化的解决方案 |
+| [Continuous Batching](basics/scheduling) | 动态批处理、调度策略 | 理解高吞吐推理的关键 |
+| [Radix Attention](basics/radix-attention) | 前缀树、KV Cache 复用 | 了解 SGLang 的核心创新 |
+| [分布式推理](basics/distributed-inference) | Tensor Parallelism、通信原语 | 掌握大模型多卡部署方案 |
+| [模型量化](basics/quantization) | INT8/INT4、GPTQ、AWQ | 学会用更少资源运行大模型 |
+
+---
+
+## 🔧 第二模块：推理实战
+
+基于 **Mini-SGLang** 源码，从工程视角深入理解现代 LLM 推理系统的实现。
+
+Mini-SGLang 是 SGLang 的教学版本，保留了核心设计思想，代码量精简但功能完整，非常适合学习。
+
+### 章节列表
+
+| 章节 | 主题 | 核心内容 | 难度 |
+|------|------|----------|------|
+| [第一章](actions/chapter-01) | 项目概述与架构设计 | 整体架构、核心特性、代码结构 | ⭐ |
+| [第二章](actions/chapter-02) | 数据结构与上下文管理 | 请求管理、批处理、状态机 | ⭐⭐ |
+| [第三章](actions/chapter-03) | 分布式系统与通信 | 张量并行、NCCL、进程管理 | ⭐⭐⭐ |
+| [第四章](actions/chapter-04) | 推理引擎与调度器 | 调度算法、CUDA Graph、重叠调度 | ⭐⭐⭐⭐ |
+| [第五章](actions/chapter-05) | KV 缓存与 Radix 树 | 缓存复用、内存管理、LRU 淘汰 | ⭐⭐⭐⭐ |
+| [第六章](actions/chapter-06) | 高性能 CUDA 内核 | JIT 编译、算子融合、向量化 | ⭐⭐⭐⭐⭐ |
+| [第七章](actions/chapter-07) | 模型层与注意力机制 | Transformer 实现、RoPE、GQA | ⭐⭐⭐⭐ |
+| [第八章](actions/chapter-08) | API 服务器与部署 | FastAPI、OpenAI 兼容、生产运维 | ⭐⭐⭐ |
+
+### 系统架构总览
 
 ```mermaid
 graph LR
-    A[系统层] --> B[应用层]
-    A --> C[内核层]
-    A --> D[通信层]
+    Client[客户端] --> API[API Server]
+    API --> Tokenizer[Tokenizer]
+    Tokenizer --> Scheduler[Scheduler]
+    Scheduler --> Engine[Engine]
+    Engine --> Detokenizer[Detokenizer]
+    Detokenizer --> API
     
-    B --> B1[API服务器]
-    B --> B2[调度器]
-    B --> B3[模型层]
+    subgraph "核心组件"
+        Scheduler
+        Engine
+    end
     
-    C --> C1[CUDA内核]
-    C --> C2[KV缓存]
-    C --> C3[注意力后端]
+    Engine --> KVCache[KV Cache]
+    Engine --> Model[Model]
     
-    D --> D1[ZeroMQ]
-    D --> D2[NCCL]
-    D --> D3[进程间通信]
-    
-    B1 --> E[HTTP接口]
-    B1 --> F[流式响应]
-    B1 --> G[Shell交互]
-    
-    B2 --> H[预填充调度]
-    B2 --> I[解码调度]
-    B2 --> J[批处理管理]
-    
-    B3 --> K[Llama模型]
-    B3 --> L[Qwen模型]
-    B3 --> M[Transformer层]
-    
-    C1 --> N[JIT编译]
-    C1 --> O[向量化优化]
-    C1 --> P[内存合并]
-    
-    C2 --> Q[Radix树]
-    C2 --> R[页面管理]
-    C2 --> S[缓存复用]
-    
-    C3 --> T[FlashAttention]
-    C3 --> U[FlashInfer]
-    C3 --> V[混合后端]
+    style Scheduler fill:#ffeb3b
+    style Engine fill:#4caf50
+    style KVCache fill:#2196f3
 ```
 
-## 🔑 关键技术亮点
+---
 
-### 1. 高性能推理引擎
+## 🗺️ 学习路径建议
 
-#### 调度器系统
-- **重叠调度**：CPU调度与GPU计算并行执行
-- **优先级调度**：预填充优先，解码次优
-- **动态批处理**：实时调整批次大小优化吞吐量
+### 路径一：快速入门（1-2 周）
 
-#### 推理优化
-- **CUDA图重放**：预编译计算图减少启动开销
-- **内存布局优化**：页面优先和层优先布局选择
-- **算子融合**：减少内存传输和内核启动次数
+适合有深度学习基础，想快速了解 LLM 推理系统的读者。
 
-### 2. 分布式系统架构
-
-#### 张量并行
-- **权重分片**：模型权重按维度分布到多个GPU
-- **通信聚合**：All-Reduce和All-Gather高效通信
-- **负载均衡**：自动平衡各GPU计算负载
-
-#### 进程管理
-- **多进程隔离**：组件独立进程提高系统稳定性
-- **进程间通信**：ZeroMQ实现高性能消息传递
-- **优雅关闭**：支持安全关闭和资源清理
-
-### 3. 内存管理优化
-
-#### KV缓存管理
-- **Radix树缓存**：基于前缀的缓存复用机制
-- **引用计数**：防止缓存竞争和内存泄漏
-- **LRU淘汰**：智能管理缓存生命周期
-
-#### 内存访问优化
-- **连续内存布局**：提高缓存命中率
-- **向量化操作**：减少内存访问次数
-- **内存池复用**：减少动态内存分配开销
-
-### 4. 模型层实现
-
-#### 注意力机制
-- **多头注意力**：支持分组查询注意力(GQA)
-- **旋转位置编码**：RoPE实现相对位置编码
-- **高性能后端**：FlashAttention和FlashInfer集成
-
-#### 前馈网络
-- **Gated MLP**：门控机制增强表示能力
-- **激活函数优化**：SiLU门控激活
-- **并行投影**：支持张量并行分片
-
-### 5. API服务器系统
-
-#### 接口设计
-- **OpenAI兼容**：完全兼容OpenAI API规范
-- **流式响应**：支持实时token流式输出
-- **多协议支持**：HTTP和交互式Shell
-
-#### 系统集成
-- **配置管理**：灵活的命令行和环境变量配置
-- **健康监控**：完善的监控和健康检查机制
-- **生产部署**：支持Docker容器化部署
-
-## 📊 性能基准分析
-
-### 性能对比表
-
-| 优化技术 | 性能提升 | 适用场景 | 实现复杂度 |
-|----------|----------|----------|------------|
-| **张量并行** | 3-4倍吞吐量 | 大模型推理 | ⭐⭐⭐⭐☆ |
-| **CUDA图重放** | 2-3倍延迟降低 | 小批量推理 | ⭐⭐⭐☆☆ |
-| **Radix缓存** | 30-50%内存节省 | 多轮对话 | ⭐⭐⭐⭐☆ |
-| **重叠调度** | 20-30%吞吐量提升 | 高并发场景 | ⭐⭐⭐☆☆ |
-| **FlashAttention** | 40-60%速度提升 | 长序列推理 | ⭐⭐⭐⭐⭐ |
-
-### 扩展性测试
-
-```mermaid
-graph LR
-    A[1 GPU] --> B[2 GPU]
-    B --> C[4 GPU]
-    C --> D[8 GPU]
-    
-    A --> A1[吞吐量: 1,200 tokens/s]
-    B --> B1[吞吐量: 2,300 tokens/s]
-    C --> C1[吞吐量: 4,500 tokens/s]
-    D --> D1[吞吐量: 8,000 tokens/s]
+```
+Transformer 架构 → 推理过程揭秘 → KV Cache → 第一章（架构概述）→ 第四章（调度器）
 ```
 
-## 🚀 实际应用场景
+### 路径二：系统学习（4-6 周）
 
-### 1. 生产环境部署
+适合想全面掌握 LLM 技术栈的读者。
 
-#### 单机多GPU部署
-```bash
-# 4GPU张量并行部署
-python -m minisgl \
-    --model-path "meta-llama/Llama-3.1-70B-Instruct" \
-    --tensor-parallel-size 4 \
-    --host 0.0.0.0 \
-    --port 8080 \
-    --attention-backend "fa3,fi" \
-    --cache-type "radix" \
-    --max-running-requests 128
+```
+第一部分：深度学习基础（全部）
+    ↓
+第二部分：训练篇（全部）
+    ↓
+第三部分：推理篇（全部）
+    ↓
+推理实战：第一章 → 第八章（按顺序）
 ```
 
-#### 多节点集群部署
-```yaml
-# Kubernetes部署配置
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: minisgl-inference
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: minisgl
-  template:
-    metadata:
-      labels:
-        app: minisgl
-    spec:
-      containers:
-      - name: minisgl
-        image: minisgl:latest
-        resources:
-          limits:
-            nvidia.com/gpu: 4
-        ports:
-        - containerPort: 8080
-        env:
-        - name: TP_SIZE
-          value: "4"
-        - name: MODEL_PATH
-          value: "meta-llama/Llama-3.1-70B-Instruct"
-```
+### 路径三：专项深入
 
-### 2. 客户端集成示例
+根据你的具体需求选择：
 
-#### Python客户端
-```python
-import openai
+| 目标 | 推荐阅读 |
+|------|----------|
+| 理解 ChatGPT 训练过程 | 预训练 → SFT → RLHF |
+| 部署大模型到生产环境 | 量化 → 分布式推理 → 第八章 |
+| 优化推理性能 | KV Cache → PagedAttention → 第四、五、六章 |
+| 理解 SGLang 核心创新 | Radix Attention → 第五章 |
 
-client = openai.OpenAI(
-    base_url="http://localhost:8080/v1",
-    api_key="not-needed"
-)
+---
 
-response = client.chat.completions.create(
-    model="Llama-3.1-70B-Instruct",
-    messages=[{"role": "user", "content": "Hello, how are you?"}],
-    stream=True
-)
+## 🎓 学习资源
 
-for chunk in response:
-    if chunk.choices[0].delta.content:
-        print(chunk.choices[0].delta.content, end="", flush=True)
-```
+除了本站内容，我们还整理了优质的外部学习资源：
 
-#### HTTP客户端
-```bash
-# 直接HTTP调用
-curl -X POST http://localhost:8080/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "Llama-3.1-70B-Instruct",
-    "messages": [{"role": "user", "content": "Hello!"}],
-    "stream": true
-  }'
-```
+- [🎬 视频教程](resources/video-tutorials) - 精选 YouTube、Bilibili 优质视频
+- [📄 经典论文](resources/papers) - LLM 领域必读论文列表
+- [🚀 开源项目](resources/projects) - 值得学习的开源 LLM 项目
 
-## 🎓 学习路径建议
+---
 
-### 1. 初学者路径
-1. **第一章**：了解项目整体架构和核心特性
-2. **第八章**：学习API使用和系统部署
-3. **第二章**：理解核心数据结构和请求管理
-4. **第七章**：掌握模型层和注意力机制
+## � 学习建议
 
-### 2. 进阶学习路径
-1. **第三章**：深入分布式系统和通信机制
-2. **第四章**：学习调度器和推理引擎优化
-3. **第五章**：掌握KV缓存和内存管理
-4. **第六章**：研究高性能内核和CUDA优化
+1. **理论与实践结合**：每学完一个概念，尝试在 Mini-SGLang 源码中找到对应实现
+2. **动手实验**：克隆 Mini-SGLang 仓库，运行示例，修改代码观察效果
+3. **记录笔记**：用自己的话复述学到的知识，这是最好的检验方式
+4. **参与社区**：遇到问题多交流，也欢迎贡献内容改进
 
-### 3. 专家级路径
-- **源码阅读**：结合文档阅读Mini-SGLang源代码
-- **性能调优**：根据实际场景进行性能优化
-- **扩展开发**：基于Mini-SGLang开发新功能
-- **生产部署**：在真实环境中部署和运维
+## � 开始学习
 
-## 🔧 实践建议
+准备好了吗？让我们从 [神经网络入门](basics/neural-network-basics) 开始这段旅程！
 
-### 1. 环境准备
-```bash
-# 克隆项目
-git clone https://github.com/sgl-project/mini-sglang.git
-cd mini-sglang
+如果你已有深度学习基础，可以直接跳到 [Transformer 架构演进](basics/transformer-architecture) 或 [推理过程揭秘](basics/inference-process)。
 
-# 安装依赖
-pip install -e .
+---
 
-# 测试安装
-python -m minisgl --help
-```
-
-### 2. 实验验证
-```bash
-# 启动测试服务器
-python -m minisgl --model-path "Qwen/Qwen3-0.6B" --shell-mode
-
-# 在Shell中测试
-$ Hello, can you introduce yourself?
-```
-
-### 3. 性能测试
-```bash
-# 基准测试
-python -m minisgl.benchmark --model-path "Qwen/Qwen3-0.6B" --batch-size 32
-
-# 压力测试
-python -m minisgl.stress_test --model-path "Qwen/Qwen3-0.6B" --concurrent-users 100
-```
-
-## 📈 学习收获总结
-
-通过本系列学习，你将获得：
-
-### 技术能力提升
-- **深入理解**：LLM推理系统的完整技术栈
-- **实践能力**：能够部署和优化生产级推理服务
-- **扩展能力**：基于Mini-SGLang进行二次开发
-- **调试能力**：掌握性能分析和问题定位技能
-
-### 职业发展价值
-- **架构设计**：能够设计高性能AI推理系统
-- **工程实现**：掌握现代AI系统的工程化实践
-- **团队协作**：理解大型AI项目的协作模式
-- **技术视野**：了解AI基础设施的最新技术趋势
-
-## 🔗 相关资源
-
-### 官方资源
-- [Mini-SGLang GitHub仓库](https://github.com/sgl-project/mini-sglang)
-- [SGLang项目主页](https://sgl-project.github.io/)
-- [技术文档](https://sgl-project.github.io/docs/)
-
-### 学习资源
-- [Transformer架构详解](https://arxiv.org/abs/1706.03762)
-- [FlashAttention论文](https://arxiv.org/abs/2205.14135)
-- [张量并行技术](https://arxiv.org/abs/1909.08053)
-
-### 社区资源
-- [Discord社区](https://discord.gg/sglang)
-- [GitHub Issues](https://github.com/sgl-project/mini-sglang/issues)
-- [技术博客](https://sgl-project.github.io/blog/)
-
-## 🎉 结语
-
-Mini-SGLang作为一个轻量级、高性能的LLM推理框架，展现了现代AI系统工程的优秀实践。通过本系列学习，你不仅掌握了具体的技术实现，更重要的是理解了如何将复杂的AI算法转化为高效、可靠的生产系统。
-
-**继续学习建议**：
-1. **动手实践**：在实际项目中应用所学知识
-2. **源码阅读**：深入阅读Mini-SGLang源代码
-3. **社区参与**：参与开源社区讨论和贡献
-4. **持续学习**：关注AI基础设施的最新发展
-
-祝你在AI工程化的道路上不断进步！🚀
+> 📝 **关于本项目**
+> 
+> 本学习指南基于 [Mini-SGLang](https://github.com/sgl-project/mini-sglang) 项目构建，旨在帮助更多人理解现代 LLM 推理系统的设计与实现。欢迎 Star、Fork 和贡献内容！
