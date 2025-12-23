@@ -52,7 +52,7 @@ export default function Home(): JSX.Element {
             <div className="row">
               <div className={clsx('col col--4')}>
                 <div className="text--center padding-horiz--md">
-                  <Heading as="h3">系统化学习</Heading>
+                  <Heading as="h3">系统学习</Heading>
                   <p>
                     从神经网络到大模型推理，完整的 LLM 学习路线
                   </p>
