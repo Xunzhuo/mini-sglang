@@ -15,6 +15,26 @@
   border-bottom-color: rgba(255, 255, 255, 0.1);
 }
 
+/* Banner 图片容器 */
+.bannerImageContainer {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto 3rem;
+  padding: 0 2rem;
+}
+
+.bannerImage {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='dark'] .bannerImage {
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+}
+
 .heroBanner :global(.hero__title) {
   font-size: 3rem;
   font-weight: 700;
@@ -41,6 +61,11 @@
 @media screen and (max-width: 996px) {
   .heroBanner {
     padding: 3rem 2rem;
+  }
+
+  .bannerImageContainer {
+    margin-bottom: 2rem;
+    padding: 0 1rem;
   }
 
   .heroBanner :global(.hero__title) {

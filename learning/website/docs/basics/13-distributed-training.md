@@ -4,377 +4,399 @@ sidebar_position: 13
 
 # 分布式训练：突破单卡限制
 
-当模型大到单张 GPU 无法容纳时，分布式训练成为必需。本文将介绍训练大语言模型的各种并行策略。
+当模型大到单张 GPU 无法容纳时，分布式训练成为必需。现代大语言模型通常有数十亿甚至上万亿参数，必须采用多种并行策略才能有效训练。
 
 ## 为什么需要分布式训练？
 
 ### 显存占用分析
 
-训练一个模型需要存储：
+训练一个大语言模型需要在显存中存储多个组件：
 
-```
-显存占用 = 模型参数 + 优化器状态 + 梯度 + 激活值
-
-对于 7B 参数模型 (FP32):
-- 模型参数: 7B × 4 bytes = 28 GB
-- Adam 优化器: 7B × 8 bytes = 56 GB (m 和 v)
-- 梯度: 7B × 4 bytes = 28 GB
-- 激活值: 取决于 batch size 和序列长度
-总计: > 112 GB （远超单卡显存）
+```mermaid
+pie title 训练时显存占用分布
+    "模型参数" : 35
+    "优化器状态" : 45
+    "梯度" : 15
+    "激活值" : 5
 ```
 
-### 解决方案：并行化
+以一个 70 亿参数的模型为例：
+- **模型参数**：70 亿参数 × 2 字节（半精度）= 14 GB
+- **优化器状态**：70 亿参数 × 8 字节（Adam）= 56 GB  
+- **梯度**：70 亿参数 × 2 字节 = 14 GB
+- **激活值**：取决于批大小和序列长度
 
-| 并行策略 | 切分对象 | 典型场景 |
-|----------|----------|----------|
-| 数据并行 (DP) | 数据 | 多卡加速训练 |
-| 张量并行 (TP) | 模型层内参数 | 单层太大 |
-| 流水线并行 (PP) | 模型层间 | 层数太多 |
-| 序列并行 (SP) | 序列长度 | 长序列 |
+总需求超过 84 GB，远超单张 GPU 的显存容量。
+
+### 解决方案：并行化策略
+
+不同的并行策略针对不同的瓶颈：
+
+```mermaid
+flowchart TD
+    A[训练瓶颈] --> B{瓶颈类型}
+    B -->|批处理限制| C[数据并行 DP]
+    B -->|单层过大| D[张量并行 TP]
+    B -->|层数过多| E[流水线并行 PP]
+    B -->|序列过长| F[序列并行 SP]
+```
 
 ## 数据并行 (Data Parallelism)
 
 ### 基本原理
 
-每张卡持有完整模型副本，处理不同的数据：
+数据并行是最直观的并行策略。每张 GPU 都持有完整的模型副本，但处理不同的数据样本。
 
-```
-数据 batch → 切分为 N 份 → N 张 GPU 各处理一份
-                          ↓
-           每张卡计算梯度 → AllReduce 同步 → 更新参数
-```
-
-### 实现方式
-
-**PyTorch DistributedDataParallel (DDP)**:
-
-```python
-import torch.distributed as dist
-from torch.nn.parallel import DistributedDataParallel as DDP
-
-# 初始化分布式环境
-dist.init_process_group("nccl")
-local_rank = int(os.environ["LOCAL_RANK"])
-
-# 模型移动到对应 GPU
-model = model.to(local_rank)
-model = DDP(model, device_ids=[local_rank])
-
-# 数据采样器
-sampler = DistributedSampler(dataset)
-dataloader = DataLoader(dataset, sampler=sampler)
-
-# 训练循环
-for batch in dataloader:
-    loss = model(batch)
-    loss.backward()  # 梯度自动同步
-    optimizer.step()
-```
-
-### 优缺点
-
-✅ 实现简单，线性加速
-❌ 每张卡需要存储完整模型，显存瓶颈
-
-## ZeRO (Zero Redundancy Optimizer)
-
-### 核心思想
-
-数据并行中，每张卡都存储完整的优化器状态、梯度、参数——这是冗余的！
-
-**ZeRO 三个阶段**：
-
-| 阶段 | 切分内容 | 显存节省 |
-|------|----------|----------|
-| ZeRO-1 | 优化器状态 | 4x |
-| ZeRO-2 | + 梯度 | 8x |
-| ZeRO-3 | + 模型参数 | N x (N=GPU数) |
-
-### ZeRO-3 原理
-
-```
-正常 DP: 每张卡存储 [全部参数 + 全部梯度 + 全部优化器状态]
-
-ZeRO-3: 每张卡只存储 1/N 的 [参数 + 梯度 + 优化器状态]
-        需要时通过 AllGather 获取其他部分
+```mermaid
+sequenceDiagram
+    participant GPU0
+    participant GPU1
+    participant GPU2
+    participant GPU3
+    
+    Note over GPU0, GPU3: 各GPU处理不同数据批次
+    GPU0->>GPU0: 前向传播 batch_0
+    GPU1->>GPU1: 前向传播 batch_1
+    GPU2->>GPU2: 前向传播 batch_2
+    GPU3->>GPU3: 前向传播 batch_3
+    
+    Note over GPU0, GPU3: 计算梯度
+    GPU0->>GPU0: 反向传播
+    GPU1->>GPU1: 反向传播
+    GPU2->>GPU2: 反向传播
+    GPU3->>GPU3: 反向传播
+    
+    Note over GPU0, GPU3: AllReduce同步梯度
+    GPU0->>GPU1: 梯度同步
+    GPU1->>GPU2: 梯度同步
+    GPU2->>GPU3: 梯度同步
+    GPU3->>GPU0: 梯度同步
+    
+    Note over GPU0, GPU3: 更新参数
+    GPU0->>GPU0: 参数更新
+    GPU1->>GPU1: 参数更新
+    GPU2->>GPU2: 参数更新
+    GPU3->>GPU3: 参数更新
 ```
 
-### DeepSpeed 实现
+### 优缺点分析
 
-```python
-import deepspeed
+**优点**：
+- 实现简单，现有代码改动最小
+- 能够实现近乎线性的加速比
+- 适合模型参数能放入单卡显存的场景
 
-# deepspeed_config.json
-config = {
-    "zero_optimization": {
-        "stage": 3,
-        "offload_optimizer": {"device": "cpu"},
-        "offload_param": {"device": "cpu"},
-    },
-    "bf16": {"enabled": True},
-    "train_batch_size": 32,
-}
+**缺点**：
+- 每张卡需要存储完整模型，显存利用率低
+- 梯度同步带来通信开销
+- 受限于单卡显存容量
 
-# 初始化
-model, optimizer, _, _ = deepspeed.initialize(
-    model=model,
-    config=config,
-)
-```
+### ZeRO 优化
 
-### FSDP (Fully Sharded Data Parallel)
+ZeRO (Zero Redundancy Optimizer) 通过消除冗余来优化数据并行：
 
-PyTorch 原生的 ZeRO-3 实现：
-
-```python
-from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
-
-model = FSDP(
-    model,
-    sharding_strategy=ShardingStrategy.FULL_SHARD,
-    cpu_offload=CPUOffload(offload_params=True),
-)
-```
+| 阶段 | 切分内容 | 显存节省 | 通信开销 |
+|------|----------|----------|----------|
+| ZeRO-1 | 优化器状态 | 4倍 | 中等 |
+| ZeRO-2 | 优化器状态 + 梯度 | 8倍 | 高 |
+| ZeRO-3 | 优化器状态 + 梯度 + 参数 | 线性 | 很高 |
 
 ## 张量并行 (Tensor Parallelism)
 
 ### 核心思想
 
-将单个层的参数切分到多张卡上：
+张量并行将单个层的参数矩阵切分到多张 GPU 上，每张 GPU 只负责计算部分结果。
 
-```
-原始: Y = XW, W 是 (d_in, d_out)
-
-列切分: W = [W1, W2]
-        Y = [XW1, XW2] → AllGather → Y
-
-行切分: W = [W1; W2], X = [X1, X2]
-        Y = X1W1 + X2W2 → AllReduce → Y
-```
-
-### MLP 层的张量并行
-
-```
-           ┌─────────────────────────────┐
-    X  →   │  Column Parallel (W1)       │ → GELU
-           │  [d, 4d/N] on each GPU      │
-           └─────────────────────────────┘
-                         ↓
-           ┌─────────────────────────────┐
-           │  Row Parallel (W2)          │ → AllReduce → Y
-           │  [4d/N, d] on each GPU      │
-           └─────────────────────────────┘
-```
-
-### Attention 层的张量并行
-
-```
-Q, K, V 投影: Column Parallel (按 head 切分)
-输出投影: Row Parallel
-
-每张 GPU 计算部分 heads 的 attention
-```
-
-### Megatron-LM 实现
-
-```python
-# Megatron 风格的 Column Parallel Linear
-class ColumnParallelLinear(nn.Module):
-    def __init__(self, in_features, out_features, world_size):
-        super().__init__()
-        self.out_features_per_partition = out_features // world_size
-        self.weight = nn.Parameter(
-            torch.empty(self.out_features_per_partition, in_features)
-        )
+```mermaid
+graph TB
+    subgraph "原始计算"
+        X1[输入 X] --> W1[权重矩阵 W]
+        W1 --> Y1[输出 Y = XW]
+    end
     
-    def forward(self, x):
-        output = F.linear(x, self.weight)
-        # 后续需要 AllGather
-        return output
+    subgraph "列切分"
+        X2[输入 X] --> W2[W1 切分]
+        X2 --> W3[W2 切分]
+        W2 --> A1[部分输出]
+        W3 --> A2[部分输出]
+        A1 --> G1[AllGather]
+        A2 --> G1
+        G1 --> Y2[完整输出]
+    end
+    
+    subgraph "行切分"
+        X3[输入 X] --> X4[输入切分 X1]
+        X3 --> X5[输入切分 X2]
+        X4 --> W4[W1 切分]
+        X5 --> W5[W2 切分]
+        W4 --> B1[部分结果]
+        W5 --> B2[部分结果]
+        B1 --> R1[AllReduce]
+        B2 --> R1
+        R1 --> Y3[完整输出]
+    end
 ```
+
+### Transformer 中的张量并行
+
+在 Transformer 模型中，张量并行主要应用在两个地方：
+
+1. **MLP 层**：
+   - 第一个线性层使用列并行
+   - 第二个线性层使用行并行
+   - 中间的激活函数计算在各 GPU 独立进行
+
+2. **注意力层**：
+   - Q、K、V 投影使用列并行（按注意力头切分）
+   - 输出投影使用行并行
+
+### 通信模式
+
+张量并行需要在每个 Transformer 块内进行通信：
+- 列并行后需要 AllGather 操作
+- 行并行后需要 AllReduce 操作
+- 通信频率高，但数据量相对较小
 
 ## 流水线并行 (Pipeline Parallelism)
 
-### 核心思想
+### 基本原理
 
-将模型按层切分到不同 GPU：
+流水线并行将模型按层切分到不同的 GPU 上，形成一条计算流水线。
 
-```
-GPU 0: 层 0-7
-GPU 1: 层 8-15
-GPU 2: 层 16-23
-GPU 3: 层 24-31
-
-数据流: GPU0 → GPU1 → GPU2 → GPU3
+```mermaid
+graph LR
+    subgraph "GPU 0"
+        L1[层 1-8]
+    end
+    
+    subgraph "GPU 1"
+        L2[层 9-16]
+    end
+    
+    subgraph "GPU 2"
+        L3[层 17-24]
+    end
+    
+    subgraph "GPU 3"
+        L4[层 25-32]
+    end
+    
+    D1[数据] --> L1
+    L1 --> L2
+    L2 --> L3
+    L3 --> L4
+    L4 --> D2[输出]
 ```
 
 ### 朴素流水线的问题
 
-```
-时间 →
-GPU 0: [F0][  ][  ][  ][B0][  ][  ][  ]
-GPU 1: [  ][F1][  ][  ][  ][B1][  ][  ]
-GPU 2: [  ][  ][F2][  ][  ][  ][B2][  ]
-GPU 3: [  ][  ][  ][F3][  ][  ][  ][B3]
+简单的流水线并行存在严重的"气泡"问题，大部分 GPU 在大部分时间处于空闲状态。
 
-大量 GPU 空闲时间！(气泡)
-```
+### Micro-batch 优化
 
-### Micro-batch 流水线
+通过将一个批次切分为多个微批次，可以显著减少气泡：
 
-将一个 batch 切分为多个 micro-batch：
-
-```
-时间 →
-GPU 0: [F0][F1][F2][F3][B3][B2][B1][B0]
-GPU 1: [  ][F0][F1][F2][F3][B3][B2][B1]
-GPU 2: [  ][  ][F0][F1][F2][F3][B3][B2]
-GPU 3: [  ][  ][  ][F0][F1][F2][F3][B3]
-
-气泡大大减少！
+```mermaid
+gantt
+    title 流水线并行时间线优化
+    dateFormat X
+    axisFormat %s
+    
+    section GPU 0
+    F1    :0, 2
+    F2    :2, 4
+    F3    :4, 6
+    F4    :6, 8
+    B4    :8, 10
+    B3    :10, 12
+    B2    :12, 14
+    B1    :14, 16
+    
+    section GPU 1
+    idle1 :0, 2
+    F1    :2, 4
+    F2    :4, 6
+    F3    :6, 8
+    F4    :8, 10
+    B4    :10, 12
+    B3    :12, 14
+    B2    :14, 16
+    B1    :16, 18
+    
+    section GPU 2
+    idle2 :0, 4
+    F1    :4, 6
+    F2    :6, 8
+    F3    :8, 10
+    F4    :10, 12
+    B4    :12, 14
+    B3    :14, 16
+    B2    :16, 18
+    B1    :18, 20
+    
+    section GPU 3
+    idle3 :0, 6
+    F1    :6, 8
+    F2    :8, 10
+    F3    :10, 12
+    F4    :12, 14
+    B4    :14, 16
+    B3    :16, 18
+    B2    :18, 20
+    B1    :20, 22
 ```
 
 ### 调度策略
 
-| 策略 | 特点 |
-|------|------|
-| **GPipe** | 先所有前向，再所有反向，内存占用大 |
-| **1F1B** | 交替前向反向，内存占用小 |
-| **Interleaved 1F1B** | 每张卡负责多段，进一步减少气泡 |
+不同的调度策略有不同的特点：
 
-## 3D 并行
+| 策略 | 描述 | 优点 | 缺点 |
+|------|------|------|------|
+| **GPipe** | 先完成所有前向，再进行反向 | 实现简单 | 内存占用大 |
+| **1F1B** | 交替进行前向和反向 | 内存效率高 | 实现复杂 |
+| **交错 1F1B** | 每个 GPU 负责多段 | 进一步减少气泡 | 复杂度最高 |
+
+## 3D 并行策略
 
 ### 组合使用
 
-大规模训练通常组合多种并行策略：
+对于超大规模模型（万亿参数级别），需要组合使用多种并行策略：
 
+```mermaid
+graph TB
+    subgraph "3D 并行架构"
+        subgraph "数据并行维度"
+            DP1[DP 组 1]
+            DP2[DP 组 2]
+            DP3[DP 组 N]
+        end
+        
+        subgraph "张量并行 + 流水线并行"
+            TP1[TP 并行组]
+            PP1[PP 阶段 1]
+            PP2[PP 阶段 2]
+            PP3[PP 阶段 M]
+        end
+    end
+    
+    DP1 --> TP1
+    DP2 --> TP1
+    DP3 --> TP1
+    
+    TP1 --> PP1
+    PP1 --> PP2
+    PP2 --> PP3
 ```
-3D 并行 = 数据并行 × 张量并行 × 流水线并行
 
-例如: 1024 GPUs
-- DP: 64 组
-- TP: 8 (每组 8 卡做张量并行)
-- PP: 2 (每组分 2 段流水线)
-```
+### 典型配置示例
 
-### 配置示例
-
-```python
-# Megatron-DeepSpeed 配置
-parallel_config = {
-    "tensor_model_parallel_size": 8,   # TP
-    "pipeline_model_parallel_size": 4,  # PP
-    "data_parallel_size": 32,           # DP (自动计算)
-}
-# 总 GPU 数 = 8 × 4 × 32 = 1024
-```
+以 1024 张 GPU 训练万亿参数模型为例：
+- **数据并行**：64 组，每组 16 张 GPU
+- **张量并行**：每组内 8 张 GPU 做张量并行
+- **流水线并行**：每组分 2 段流水线
 
 ## 序列并行 (Sequence Parallelism)
 
 ### 动机
 
-注意力计算的显存与序列长度平方成正比：
+当序列长度很长时，注意力计算的显存占用会呈平方增长。序列并行通过切分序列维度来解决这个问题。
 
-```
-Attention 显存 ∝ O(seq_len²)
-```
-
-### Ring Attention
-
-将序列切分到不同 GPU，通过环形通信计算完整 attention：
-
-```
-GPU 0: Q[0:L/4], K[0:L/4], V[0:L/4]
-GPU 1: Q[L/4:L/2], K[L/4:L/2], V[L/4:L/2]
-...
-
-环形传递 K, V，逐步计算完整 attention
+```mermaid
+graph TB
+    subgraph "原始注意力"
+        S1[序列长度 L]
+        S1 --> AT1[注意力矩阵 L×L]
+        AT1 --> O1[输出]
+    end
+    
+    subgraph "序列并行"
+        S2[序列长度 L/2]
+        S3[序列长度 L/2]
+        S2 --> AT2[注意力 L/2×L/2]
+        S3 --> AT3[注意力 L/2×L/2]
+        AT2 --> R1[环形通信]
+        AT3 --> R1
+        R1 --> O2[完整输出]
+    end
 ```
 
 ## 混合精度训练
 
-### 数据类型
+### 数据类型选择
 
-| 类型 | 位宽 | 范围 | 用途 |
-|------|------|------|------|
-| FP32 | 32 | 大 | 主参数 |
-| FP16 | 16 | 小 | 计算 |
-| BF16 | 16 | 大 | 计算 (推荐) |
-
-### Loss Scaling
-
-FP16 范围小，容易下溢。解决方案：
-
-```python
-scaler = torch.cuda.amp.GradScaler()
-
-with torch.cuda.amp.autocast():
-    output = model(input)
-    loss = criterion(output, target)
-
-scaler.scale(loss).backward()
-scaler.step(optimizer)
-scaler.update()
-```
+| 类型 | 位宽 | 数值范围 | 精度 | 推荐场景 |
+|------|------|----------|------|----------|
+| FP32 | 32 | 很大 | 很高 | 主参数存储 |
+| BF16 | 16 | 大 | 中等 | 主要计算 |
+| FP16 | 16 | 小 | 高 | 老旧硬件 |
+| FP8 | 8 | 中等 | 低 | 实验性 |
 
 ### BF16 的优势
 
-```
-FP16: 1 符号位 + 5 指数位 + 10 尾数位 → 精度高，范围小
-BF16: 1 符号位 + 8 指数位 + 7 尾数位  → 精度低，范围大
+BF16（Brain Floating Point）是现代大模型训练的首选：
+- 与 FP32 相同的指数位，数值范围大
+- 无需梯度缩放，训练更稳定
+- 现代硬件原生支持
 
-BF16 范围与 FP32 相同，无需 loss scaling！
-```
+## 通信优化策略
 
-## 实战：多节点训练
+### 通信与计算重叠
 
-### 启动命令
-
-```bash
-# 使用 torchrun (PyTorch 推荐)
-torchrun --nproc_per_node=8 \
-         --nnodes=4 \
-         --node_rank=$NODE_RANK \
-         --master_addr=$MASTER_ADDR \
-         --master_port=29500 \
-         train.py
-
-# 使用 DeepSpeed
-deepspeed --num_gpus=8 \
-          --num_nodes=4 \
-          --hostfile=hostfile \
-          train.py --deepspeed_config ds_config.json
+```mermaid
+flowchart LR
+    subgraph "传统方式"
+        C1[计算] --> CO1[通信]
+        CO1 --> C2[计算]
+    end
+    
+    subgraph "优化方式"
+        C3[计算] --> CO2[通信重叠]
+        C4[计算] --> CO2
+    end
 ```
 
-### 通信优化
+### 梯度压缩
 
-```python
-# 梯度压缩
-model = DDP(model, gradient_as_bucket_view=True)
+通过减少通信数据量来加速训练：
+- **量化**：将梯度从 16 位量化到 8 位
+- **稀疏化**：只传输重要的梯度
+- **top-k 采样**：只传输绝对值最大的 k 个梯度
 
-# 通信与计算重叠
-model = DDP(model, overlap_comm=True)
-```
+## 实战建议
+
+### 选择合适的并行策略
+
+根据模型规模和硬件配置选择：
+
+| 模型规模 | 推荐策略 | 硬件要求 |
+|----------|----------|----------|
+| < 10B | 数据并行 + ZeRO | 单机多卡 |
+| 10B-100B | 数据并行 + ZeRO-3 | 多机多卡 |
+| 100B-1T | 3D 并行 | 大规模集群 |
+| > 1T | 3D 并行 + MoE | 超算集群 |
+
+### 硬件拓扑优化
+
+- **节点内通信**：使用 NVLink，带宽高达 900 GB/s
+- **节点间通信**：使用 InfiniBand，延迟最低
+- **网络拓扑**：尽量避免跨节点张量并行
 
 ## 本章小结
 
-| 并行策略 | 切分 | 显存效率 | 通信开销 |
-|----------|------|----------|----------|
-| DP | 数据 | 低 | 中 (AllReduce) |
-| ZeRO | 状态 | 高 | 高 |
-| TP | 层内参数 | 中 | 高 (AllReduce) |
-| PP | 层间 | 中 | 低 (P2P) |
+分布式训练是大模型训练的必需技术，不同的并行策略解决不同的瓶颈：
 
-- 数据并行是基础，ZeRO 大幅提升显存效率
-- 张量并行适合单层过大的情况
-- 流水线并行适合层数过多的情况
-- 大规模训练需要组合多种策略
+- **数据并行**：解决吞吐量问题，实现简单
+- **张量并行**：解决单层过大问题，通信频繁
+- **流水线并行**：解决层数过多问题，存在气泡
+- **序列并行**：解决序列过长问题，专门优化
+
+现代大模型训练通常采用 3D 并行策略，根据具体场景合理组合各种方法，并在通信、计算、存储之间找到最佳平衡点。
 
 ## 延伸阅读
 
-- Megatron-LM: Training Multi-Billion Parameter Language Models
-- ZeRO: Memory Optimizations Toward Training Trillion Parameter Models
-- GPipe: Efficient Training of Giant Neural Networks
+- Megatron-LM：大规模语言模型训练框架
+- DeepSpeed：微软的分布式训练优化库
+- PyTorch FSDP：Meta 的完全分片数据并行
 
 ---
 

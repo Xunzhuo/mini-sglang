@@ -4,13 +4,13 @@ sidebar_position: 17
 
 # Continuous Batching：吞吐量的飞跃
 
-传统的静态批处理在 LLM 推理中效率低下，因为不同请求的生成长度差异巨大。Continuous Batching（连续批处理）通过迭代级调度，彻底打破了这一限制。
+传统的静态批处理在LLM推理中效率低下，因为不同请求的生成长度差异巨大。Continuous Batching（连续批处理）通过迭代级调度，彻底打破了这一限制。
 
 ## 静态批处理的困境
 
 ### 什么是静态批处理？
 
-传统批处理将多个请求组成一个 batch，一起处理直到全部完成：
+传统批处理将多个请求组成一个batch，一起处理直到全部完成。这种方式看似简单，却隐藏着严重的效率问题。
 
 ```mermaid
 graph LR
@@ -28,10 +28,10 @@ graph LR
 
 ### 短板效应
 
-一个 batch 的处理时间由**最长的请求**决定：
+一个batch的处理时间由最长的请求决定。想象一个场景：
 
 ```
-Batch 内请求:
+Batch内请求:
 - 请求1: 生成 50 tokens  (完成时间: 50ms)
 - 请求2: 生成 200 tokens (完成时间: 200ms)
 - 请求3: 生成 30 tokens  (完成时间: 30ms)
@@ -40,13 +40,15 @@ Batch 内请求:
 静态批处理:
 所有请求必须等待请求2完成（200ms）
 
-请求1 等待时间: 200 - 50 = 150ms (浪费!)
-请求3 等待时间: 200 - 30 = 170ms (浪费!)
+请求1 等待时间: 200 - 50 = 150ms (严重浪费!)
+请求3 等待时间: 200 - 30 = 170ms (严重浪费!)
 ```
 
-### Padding 浪费
+这种效应被称为"木桶原理"，batch的整体性能由最短的那块木板（最长的请求）决定。
 
-短请求必须 padding 到最长请求的长度：
+### Padding浪费
+
+更严重的是，短请求必须padding到最长请求的长度，导致大量无效计算：
 
 ```
 时间轴 (每格 = 10 tokens):
@@ -55,60 +57,64 @@ Batch 内请求:
 请求3: [███------------------------] 生成 30, padding 170
 请求4: [███████████████------------] 生成 150, padding 50
 
-'-' = 无效计算 (浪费 GPU 算力)
+'-' = 无效计算 (浪费GPU算力)
 ```
 
-**计算浪费率**：(150 + 170 + 50) / (4 × 200) = 46%
+在这个例子中，计算浪费率高达46%！这意味着将近一半的GPU计算资源被白白浪费了。
 
-## Continuous Batching 原理
+## Continuous Batching原理
 
 ### 核心思想：迭代级调度
 
-**Iteration-level scheduling**：不再等待整个 batch 完成，而是每生成一个 token 后重新调度。
+Continuous Batching的核心创新是**iteration-level scheduling**（迭代级调度）。它不再等待整个batch完成，而是每生成一个token后就重新调度。
 
 ```
-传统: Batch 级调度
-      [整个 Batch 开始] → [整个 Batch 结束]
-
+传统: Batch级调度
+      [整个Batch开始] → [整个Batch结束]
+      
 Continuous: 迭代级调度
       [Step 1] → [检查完成] → [Step 2] → [检查完成] → ...
 ```
+
+这种微小的改变带来了巨大的效率提升。
 
 ### 工作流程
 
 ```mermaid
 sequenceDiagram
     participant Q as 等待队列
-    participant B as 运行 Batch
+    participant B as 运行Batch
     participant C as 完成队列
     
     Note over Q,C: 初始状态
-    Q->>B: 请求1,2,3,4 进入 batch
+    Q->>B: 请求1,2,3,4进入batch
     
-    loop 每个 decode step
-        B->>B: 所有请求生成一个 token
+    loop 每个decode step
+        B->>B: 所有请求生成一个token
         alt 有请求完成
             B->>C: 移出已完成请求
-            Q->>B: 新请求加入 batch
+            Q->>B: 新请求加入batch
         end
     end
 ```
 
-### 动态演示
+### 动态演示过程
+
+让我们通过一个具体例子来理解这个过程：
 
 ```
-时间步 0:
+时间步0:
 等待队列: [请求5, 请求6, ...]
 运行中: [请求1(0/50), 请求2(0/200), 请求3(0/30), 请求4(0/150)]
 
-时间步 30 (请求3 完成):
+时间步30 (请求3完成):
 等待队列: [请求6, ...]
 运行中: [请求1(30/50), 请求2(30/200), 请求5(0/80), 请求4(30/150)]
 完成: [请求3]
        ↑
-       请求3 完成，请求5 立即加入！
+       请求3完成，请求5立即加入！
 
-时间步 50 (请求1 完成):
+时间步50 (请求1完成):
 等待队列: [...]
 运行中: [请求6(0/100), 请求2(50/200), 请求5(20/80), 请求4(50/150)]
 完成: [请求3, 请求1]
@@ -116,192 +122,104 @@ sequenceDiagram
 ... 持续进行 ...
 ```
 
+这种动态调整确保了GPU始终保持高利用率。
+
 ## 请求状态管理
 
-### 状态机
+### 状态机设计
+
+Continuous Batching需要精细的请求状态管理：
 
 ```mermaid
 stateDiagram-v2
     [*] --> Waiting: 请求到达
     Waiting --> Running: 被调度
-    Running --> Running: 生成 token
-    Running --> Finished: 生成完成/遇到 EOS
+    Running --> Running: 生成token
+    Running --> Finished: 生成完成/遇到EOS
     Running --> Preempted: 被抢占
     Preempted --> Waiting: 等待恢复
     Finished --> [*]
 ```
 
+每个请求都会经历这些状态转换，调度器需要实时跟踪和管理这些状态。
+
 ### 状态定义
 
-```python
-from enum import Enum
+- **Waiting（等待）**：请求刚到达，等待被调度执行
+- **Running（运行）**：正在生成token
+- **Preempted（抢占）**：因资源不足被暂停，等待恢复
+- **Finished（完成）**：生成完成或遇到结束符
 
-class RequestState(Enum):
-    WAITING = "waiting"      # 等待被调度
-    RUNNING = "running"      # 正在生成
-    PREEMPTED = "preempted"  # 被抢占（显存不足）
-    FINISHED = "finished"    # 完成生成
-
-class Request:
-    def __init__(self, request_id, prompt_tokens, max_tokens):
-        self.request_id = request_id
-        self.prompt_tokens = prompt_tokens
-        self.max_tokens = max_tokens
-        self.generated_tokens = []
-        self.state = RequestState.WAITING
-        self.arrival_time = time.time()
-```
+这种状态管理使得系统可以灵活处理各种异常情况，如内存不足、请求取消等。
 
 ## 调度策略
 
-### FCFS (First Come First Serve)
+### FCFS（先来先服务）
 
-最简单的策略：先到先服务。
+最简单的调度策略是先来先服务（First Come First Serve）。这种方法实现简单，但可能不是最高效的。
 
-```python
-class FCFSScheduler:
-    def __init__(self, max_batch_size):
-        self.waiting_queue = []
-        self.running_batch = []
-        self.max_batch_size = max_batch_size
-    
-    def add_request(self, request):
-        self.waiting_queue.append(request)
-    
-    def schedule(self):
-        """每个 step 调用，返回当前应该运行的请求"""
-        # 移出已完成的请求
-        self.running_batch = [
-            r for r in self.running_batch 
-            if r.state == RequestState.RUNNING
-        ]
-        
-        # 填充空位
-        while len(self.running_batch) < self.max_batch_size and self.waiting_queue:
-            request = self.waiting_queue.pop(0)  # FCFS: 取队首
-            request.state = RequestState.RUNNING
-            self.running_batch.append(request)
-        
-        return self.running_batch
-```
+调度器维护一个等待队列，新的请求总是加入队列尾部。当有空闲位置时，从队列头部取出请求执行。
 
 ### 优先级调度
 
-考虑请求优先级或其他因素：
+更智能的策略是考虑请求的优先级。可以基于多个因素：
 
-```python
-class PriorityScheduler:
-    def __init__(self, max_batch_size):
-        self.waiting_queue = []
-        self.running_batch = []
-        self.max_batch_size = max_batch_size
-    
-    def schedule(self):
-        # 按优先级排序等待队列
-        self.waiting_queue.sort(key=lambda r: (-r.priority, r.arrival_time))
-        
-        # 移出已完成的请求
-        self.running_batch = [
-            r for r in self.running_batch 
-            if r.state == RequestState.RUNNING
-        ]
-        
-        # 填充空位
-        while len(self.running_batch) < self.max_batch_size and self.waiting_queue:
-            request = self.waiting_queue.pop(0)
-            request.state = RequestState.RUNNING
-            self.running_batch.append(request)
-        
-        return self.running_batch
-```
+- 用户等级（VIP用户优先）
+- 请求紧急程度（实时对话vs批量处理）
+- 请求类型（某些类型的请求通常较短）
 
-### Shortest Job First (SJF)
+调度器会按照优先级排序等待队列，确保重要请求优先得到处理。
 
-优先处理预期生成长度短的请求：
+### 短作业优先（SJF）
 
-```python
-def sjf_key(request):
-    """估计请求的完成时间"""
-    # 可以基于 prompt 长度、历史统计等估计
-    estimated_length = estimate_output_length(request)
-    return estimated_length
+短作业优先（Shortest Job First）策略优先处理预期生成长度较短的请求。这种策略可以显著降低平均等待时间。
 
-self.waiting_queue.sort(key=sjf_key)
-```
+系统可以通过以下方式估计请求长度：
+- 基于prompt长度（通常prompt越长，生成长度也越长）
+- 基于历史统计数据（用户习惯、相似问题的平均长度）
+- 基于请求类型（某些类型的请求通常较短）
 
-## Prefill 与 Decode 的调度
+## Prefill与Decode的调度
 
 ### 混合调度的挑战
 
-Prefill 和 Decode 有不同的计算特性：
+LLM推理包含两个阶段：Prefill和Decode，它们有截然不同的计算特性：
 
 ```
-Prefill: 计算密集，处理整个 prompt
-Decode:  访存密集，每次只处理一个 token
-
-混在一起会互相影响效率
+Prefill: 计算密集，处理整个prompt
+Decode:  访存密集，每次只处理一个token
 ```
 
-### Chunked Prefill
+将这两个阶段混合处理会互相影响效率。
 
-将长 prompt 的 prefill 分块，与 decode 交替进行：
+### Chunked Prefill解决方案
+
+Chunked Prefill技术将长prompt的prefill过程分块，与decode交替进行：
 
 ```
-传统: 
+传统方式: 
 [Prefill 10000 tokens] → [Decode ......]
              ↑
       其他请求等待
-
+      
 Chunked Prefill:
 [Prefill chunk 1] → [Decode batch] → [Prefill chunk 2] → [Decode batch] → ...
                            ↑
                其他请求可以继续生成
 ```
 
-```python
-class ChunkedPrefillScheduler:
-    def __init__(self, max_batch_tokens, prefill_chunk_size=512):
-        self.prefill_chunk_size = prefill_chunk_size
-        self.max_batch_tokens = max_batch_tokens
-    
-    def schedule(self):
-        batch = []
-        total_tokens = 0
-        
-        # 添加正在 decode 的请求
-        for r in self.running_decode:
-            batch.append(r)
-            total_tokens += 1  # Decode 每请求 1 token
-        
-        # 添加 prefill（分块）
-        for r in self.waiting_prefill:
-            remaining = len(r.prompt_tokens) - r.prefill_progress
-            chunk = min(remaining, self.prefill_chunk_size)
-            
-            if total_tokens + chunk <= self.max_batch_tokens:
-                batch.append((r, chunk))
-                total_tokens += chunk
-        
-        return batch
-```
+这种方式避免了长prompt阻塞其他请求的问题，提升了系统的响应性。
 
-## 与 PagedAttention 的协同
+## 与PagedAttention的协同
 
 ### 完美搭配
 
-Continuous Batching + PagedAttention = 现代推理引擎的标配
+Continuous Batching与PagedAttention是现代推理引擎的黄金组合：
 
-```
-Continuous Batching:
-- 请求可以随时加入/离开 batch
-- 需要灵活的内存管理
+- **Continuous Batching**：请求可以随时加入/离开batch，需要灵活的内存管理
+- **PagedAttention**：按需分配KV Cache，支持动态内存管理
 
-PagedAttention:
-- 按需分配 KV Cache
-- 支持动态内存管理
-
-完美契合！
-```
+两者完美契合，互相增强。
 
 ### 协同工作流
 
@@ -326,191 +244,133 @@ graph TB
     S4 --> S1
 ```
 
+调度器决定哪些请求运行，块管理器负责内存分配和释放，推理引擎执行计算，三者紧密协作。
+
 ## 性能对比
 
 ### 吞吐量提升
+
+实际测试显示，Continuous Batching可以带来显著的性能提升：
 
 ```
 测试配置:
 - 模型: LLaMA-2 7B
 - GPU: A100 80GB
-- 请求: 1000 个，长度 50-500 tokens
+- 请求: 1000个，长度50-500 tokens
 
-静态批处理 (batch_size=32):
+静态批处理(batch_size=32):
 - 平均延迟: 2.5s
 - 吞吐量: 400 tokens/s
-- GPU 利用率: 35%
+- GPU利用率: 35%
 
 Continuous Batching:
 - 平均延迟: 0.8s
 - 吞吐量: 1200 tokens/s
-- GPU 利用率: 85%
+- GPU利用率: 85%
 
 提升: 3倍吞吐量！
 ```
 
-### 延迟分布
+### 延迟分布改善
+
+更重要的是延迟分布的改善：
 
 ```
 静态批处理:
 - 短请求等待长请求
 - 延迟分布不均匀
-- P99 延迟很高
+- P99延迟很高
 
 Continuous Batching:
 - 短请求快速完成
 - 延迟与生成长度成正比
-- P99 延迟显著降低
+- P99延迟显著降低
 ```
 
-## 实现细节
+这种改善对用户体验至关重要，特别是对于实时应用。
 
-### 完整调度器示例
+## 实现架构
 
-```python
-class ContinuousBatchingScheduler:
-    def __init__(self, max_batch_size, max_batch_tokens):
-        self.waiting_queue = []
-        self.running_batch = []
-        self.max_batch_size = max_batch_size
-        self.max_batch_tokens = max_batch_tokens
-        self.block_manager = BlockManager()
-    
-    def add_request(self, request):
-        """添加新请求到等待队列"""
-        self.waiting_queue.append(request)
-    
-    def _can_allocate(self, request):
-        """检查是否有足够的块分配给请求"""
-        required_blocks = self._estimate_blocks(request)
-        return self.block_manager.get_free_blocks() >= required_blocks
-    
-    def _schedule_running(self):
-        """处理正在运行的请求"""
-        running = []
-        for request in self.running_batch:
-            if request.is_finished():
-                # 释放资源
-                self.block_manager.free(request)
-                request.state = RequestState.FINISHED
-            elif request.state == RequestState.RUNNING:
-                running.append(request)
-        return running
-    
-    def _schedule_waiting(self, running):
-        """调度等待中的请求"""
-        # 计算当前 batch 的 token 数
-        current_tokens = sum(r.get_num_tokens() for r in running)
-        
-        new_running = []
-        remaining_waiting = []
-        
-        for request in self.waiting_queue:
-            if len(running) + len(new_running) >= self.max_batch_size:
-                remaining_waiting.append(request)
-                continue
-            
-            tokens_needed = request.get_prefill_tokens()
-            if current_tokens + tokens_needed > self.max_batch_tokens:
-                remaining_waiting.append(request)
-                continue
-            
-            if not self._can_allocate(request):
-                remaining_waiting.append(request)
-                continue
-            
-            # 分配资源并加入运行队列
-            self.block_manager.allocate(request)
-            request.state = RequestState.RUNNING
-            new_running.append(request)
-            current_tokens += tokens_needed
-        
-        self.waiting_queue = remaining_waiting
-        return running + new_running
-    
-    def schedule(self):
-        """主调度函数"""
-        running = self._schedule_running()
-        self.running_batch = self._schedule_waiting(running)
-        return self.running_batch
-```
+### 调度器核心组件
 
-### 主循环
+一个完整的Continuous Batching调度器包含以下核心组件：
 
-```python
-def serve_forever(model, scheduler, tokenizer):
-    """推理服务主循环"""
-    while True:
-        # 1. 调度
-        batch = scheduler.schedule()
-        
-        if not batch:
-            time.sleep(0.001)  # 没有请求，短暂休眠
-            continue
-        
-        # 2. 准备输入
-        input_ids = prepare_batch_inputs(batch)
-        
-        # 3. 执行一步推理
-        with torch.no_grad():
-            outputs = model.forward(input_ids)
-        
-        # 4. 采样下一个 token
-        for i, request in enumerate(batch):
-            next_token = sample(outputs.logits[i])
-            request.generated_tokens.append(next_token)
-            
-            # 检查是否完成
-            if next_token == tokenizer.eos_token_id:
-                request.mark_finished()
-            elif len(request.generated_tokens) >= request.max_tokens:
-                request.mark_finished()
-        
-        # 5. 处理完成的请求（发送响应等）
-        for request in batch:
-            if request.is_finished():
-                send_response(request)
-```
+1. **请求管理器**：维护请求队列和状态
+2. **资源管理器**：管理GPU内存和计算资源
+3. **调度算法**：决定哪些请求在当前step执行
+4. **执行引擎**：协调实际的推理计算
+
+### 主循环逻辑
+
+推理服务的主循环遵循以下逻辑：
+
+1. **调度阶段**：根据当前状态选择要执行的请求
+2. **准备阶段**：将选中的请求组织成batch
+3. **执行阶段**：运行一步推理计算
+4. **后处理阶段**：更新请求状态，处理完成的请求
+5. **响应阶段**：将结果返回给用户
+
+这个循环持续运行，确保系统的高效运作。
 
 ## 高级特性
 
 ### Prefix Caching
 
-共享相同前缀的请求可以复用 KV Cache：
+Prefix Caching技术可以缓存常见前缀的KV Cache：
 
 ```
-请求1: "你是一个 AI 助手。请回答：什么是机器学习？"
-请求2: "你是一个 AI 助手。请回答：什么是深度学习？"
+请求1: "你是一个AI助手。请回答：什么是机器学习？"
+请求2: "你是一个AI助手。请回答：什么是深度学习？"
 
-共享前缀: "你是一个 AI 助手。请回答："
+共享前缀: "你是一个AI助手。请回答："
 
-只需计算一次前缀的 KV Cache！
+只需计算一次前缀的KV Cache！
 ```
 
-### Speculative Decoding 集成
+这个特性对于系统提示词、固定模板等场景特别有效。
 
-结合投机解码进一步提升吞吐：
+### 与其他优化技术的结合
 
-```
-正常 Continuous Batching:
-每步生成 1 token/请求
+Continuous Batching可以与其他优化技术结合使用：
 
-+ Speculative Decoding:
-每步可能生成 2-5 tokens/请求
-```
+- **Speculative Decoding**：进一步提升生成速度
+- **Tensor Parallelism**：支持超大模型的推理
+- **Batch Fusion**：智能合并相似请求
+
+## 行业应用
+
+### 主流框架支持
+
+2024年，主流的LLM推理框架都采用了Continuous Batching：
+
+- **vLLM**：基于PagedAttention的高性能推理引擎
+- **TensorRT-LLM**：NVIDIA官方推理优化框架
+- **DeepSpeed-Inference**：微软的分布式推理框架
+- **TGI**：Hugging Face的文本生成推理服务
+
+### 实际部署效果
+
+在实际部署中，Continuous Batching带来了显著的成本降低：
+
+- **云服务提供商**：GPU利用率提升60-80%
+- **企业应用**：推理成本降低2-3倍
+- **用户体验**：响应时间减少50-70%
 
 ## 本章小结
 
-- 静态批处理存在短板效应和 padding 浪费
-- Continuous Batching 通过迭代级调度解决这些问题
-- 请求可以随时加入和离开 batch
-- 与 PagedAttention 完美配合
-- 吞吐量提升 2-5 倍
+Continuous Batching通过迭代级调度彻底改变了LLM推理的效率：
+
+- **解决了静态批处理的短板效应**：短请求不再需要等待长请求
+- **消除了padding浪费**：GPU算力得到充分利用
+- **与PagedAttention完美配合**：实现高效的内存管理
+- **带来2-5倍吞吐量提升**：显著降低推理成本
+
+这项技术已经成为现代LLM推理系统的标准配置，是构建高效AI服务的关键技术。
 
 ## 延伸阅读
 
-- Orca: A Distributed Serving System for Transformer-Based Generative Models
-- vLLM: Easy, Fast, and Cheap LLM Serving
+- Orca: A Distributed Serving System for Transformer-Based Generative Models (OSDI 2022)
+- vLLM: Easy, Fast, and Cheap LLM Serving (https://github.com/vllm-project/vllm)
 - Efficient Memory Management for Large Language Model Serving with PagedAttention
 
 ---

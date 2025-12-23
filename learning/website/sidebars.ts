@@ -175,7 +175,7 @@ const sidebars: SidebarsConfig = {
             {
               type: 'doc',
               id: 'basics/semantic-routing',
-              label: '语义路由系统',
+              label: '语义路由',
             },
             {
               type: 'doc',

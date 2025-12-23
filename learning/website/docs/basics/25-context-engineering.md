@@ -2,763 +2,640 @@
 sidebar_position: 25
 ---
 
-# Context Engineering：上下文工程
+# Context Engineering上下文工程：打造高效的AI对话
 
-随着大语言模型应用从简单的问答场景发展到复杂的 Agent 系统，仅仅优化 Prompt 已经无法满足需求。Context Engineering（上下文工程）应运而生，它代表了从"精准指令设计"到"系统级信息管理"的范式升级。
+上下文工程是设计和管理与大语言模型交互的艺术和科学，通过精心构造输入上下文来引导模型产生更准确、更相关的输出。本文将深入探讨上下文工程的核心概念、最新技术和最佳实践。
 
-## 1. 什么是上下文工程
+## 什么是上下文工程？
 
-### 1.1 定义
+### 基本概念
 
-**Context Engineering** 是一套为大模型构建"信息支援系统"的技术体系。其核心是构建一个动态运转的系统，能够精准判断任务需求，然后把**正确的信息**（如历史对话、外部数据）和**适用的工具**（如检索插件、计算功能），按模型能理解的格式递过去。
+上下文工程是指通过设计、优化和管理提供给大语言模型的上下文信息，以最大化模型性能和输出质量的技术体系。它不仅仅是简单的提示词编写，而是一个系统性的工程学科。
 
-```mermaid
-graph TB
-    subgraph PE[Prompt Engineering]
-        P1[单次交互优化]
-        P2[指令设计]
-        P3[静态提示词]
-    end
-    
-    subgraph CE[Context Engineering]
-        C1[多轮状态管理]
-        C2[动态信息组装]
-        C3[工具集成]
-        C4[记忆系统]
-    end
-    
-    PE --> |演进| CE
-```
+### 核心要素
 
-### 1.2 与 Prompt Engineering 的区别
+**上下文构建**：
+- 系统提示词（System Prompt）
+- 用户指令（User Instruction）
+- 示例演示（Examples/Demonstrations）
+- 背景知识（Background Knowledge）
+- 约束条件（Constraints）
 
-| 维度 | Prompt Engineering | Context Engineering |
-|------|-------------------|---------------------|
-| **关注点** | 单次交互的指令设计 | 整个任务生命周期的信息管理 |
-| **状态管理** | 无状态，需附加全部历史 | 有状态，专门服务管理记忆 |
-| **扩展性** | 难以应对复杂用例 | 通过模块化设计灵活扩展 |
-| **维护性** | 提示词冗长复杂 | 组件解耦，易于维护 |
-| **外部集成** | 只能在提示中描述操作 | 通过标准化接口调用工具 |
-| **适用场景** | 简单问答、单轮任务 | Agent、复杂工作流 |
+**优化目标**：
+- 提高回答准确性和相关性
+- 减少模型幻觉和错误
+- 控制输出格式和风格
+- 提升推理能力和逻辑性
+- 优化计算成本和响应时间
 
-### 1.3 为什么需要上下文工程
+## 上下文工程架构
 
-```mermaid
-graph LR
-    subgraph 早期["早期 LLM 应用"]
-        E1[单一 Prompt]
-        E2[一问一答]
-        E3[无状态]
-    end
-    
-    subgraph 现代["现代 Agent 系统"]
-        M1[多步骤任务]
-        M2[工具调用]
-        M3[长期记忆]
-        M4[多轮对话]
-    end
-    
-    早期 --> |需求升级| 现代
-    现代 --> |需要| CE2[Context Engineering]
-```
-
-当应用场景变得复杂时，简单的 Prompt Engineering 面临以下挑战：
-
-1. **上下文窗口限制**：无法将所有信息塞入有限的 token 窗口
-2. **状态管理困难**：多轮对话需要维护会话状态
-3. **动态信息需求**：不同任务需要不同的背景知识
-4. **工具协调复杂**：需要动态选择和调用外部工具
-
-## 2. 上下文工程的核心组件
+### 整体框架
 
 ```mermaid
 graph TB
-    subgraph Context[上下文工程体系]
-        SP[系统提示<br>System Prompt]
-        HC[历史上下文<br>History Context]
-        RAG[检索增强<br>RAG]
-        TI[工具集成<br>Tool Integration]
-        SI[结构化IO<br>Structured I/O]
-        CC[上下文压缩<br>Compression]
+    subgraph 输入层
+        UserInput[用户输入]
+        SystemPrompt[系统提示]
+        Examples[示例集合]
+        Knowledge[知识库]
     end
     
-    SP --> |定义角色和规则| LLM
-    HC --> |提供对话历史| LLM
-    RAG --> |注入外部知识| LLM
-    TI --> |扩展能力边界| LLM
-    SI --> |规范交互格式| LLM
-    CC --> |优化token使用| LLM
+    subgraph 上下文构建层
+        ContextBuilder[上下文构建器]
+        Template[模板引擎]
+        Selector[信息选择器]
+        Optimizer[优化器]
+    end
     
-    LLM[大语言模型]
+    subgraph 增强层
+        RAG[检索增强]
+        Memory[记忆管理]
+        Chain[思维链]
+        Tool[工具调用]
+    end
+    
+    subgraph 输出层
+        LLM[大语言模型]
+        Output[优化输出]
+    end
+    
+    UserInput --> ContextBuilder
+    SystemPrompt --> ContextBuilder
+    Examples --> Selector
+    Knowledge --> Selector
+    ContextBuilder --> Template
+    Selector --> Template
+    Template --> Optimizer
+    Optimizer --> RAG
+    Optimizer --> Memory
+    Optimizer --> Chain
+    Optimizer --> Tool
+    RAG --> LLM
+    Memory --> LLM
+    Chain --> LLM
+    Tool --> LLM
+    LLM --> Output
 ```
 
-### 2.1 系统提示设计（System Prompt）
+### 核心组件
 
-系统提示定义了模型的角色、行为规范和输出格式。
+#### 1. 上下文构建器
 
-```python
-system_prompt = """
-你是一个专业的代码助手，遵循以下规则：
+负责将各种信息源整合成统一的上下文表示：
 
-## 角色定义
-- 精通 Python、JavaScript、Go 等主流编程语言
-- 擅长代码审查、重构和性能优化
+**功能特点**：
+- 多模态信息融合
+- 动态上下文组装
+- 优先级管理
+- 长度控制
 
-## 行为规范
-1. 先理解用户需求，再给出方案
-2. 代码要有清晰的注释
-3. 指出潜在的安全风险
+**构建策略**：
+- 基于任务类型的模板选择
+- 根据复杂度调整信息密度
+- 考虑模型上下文窗口限制
+- 平衡信息的完整性和简洁性
 
-## 输出格式
-- 代码块使用 markdown 格式
-- 复杂逻辑要分步骤解释
-"""
-```
+#### 2. 模板引擎
+
+提供灵活的上下文模板管理：
+
+**模板类型**：
+- 固定模板：适用于标准化任务
+- 参数化模板：支持动态内容插入
+- 条件模板：根据情况选择不同内容
+- 组合模板：多个子模板的灵活组合
 
 **设计原则**：
+- 模块化和可重用性
+- 易于维护和更新
+- 支持多语言和本地化
+- 版本控制和回滚机制
 
+#### 3. 信息选择器
+
+智能选择最相关的上下文信息：
+
+**选择算法**：
+- 语义相似度匹配
+- 关键词相关性评分
+- 图谱关系分析
+- 用户偏好学习
+
+**优化策略**：
+- 多样性保证避免信息冗余
+- 时效性考虑优先最新信息
+- 权威性评估选择可靠来源
+- 个性化定制适应特定用户
+
+## 基础提示技术
+
+### 系统提示设计
+
+系统提示是上下文工程的基础，定义了模型的行为模式和响应风格：
+
+**核心要素**：
+- 角色定义：明确模型扮演的角色
+- 任务描述：清晰说明要完成的目标
+- 输出规范：指定格式、长度、风格要求
+- 约束条件：设定限制和边界
+
+**设计原则**：
+- 简洁明了，避免歧义
+- 具体可操作，不过于抽象
+- 考虑模型能力和局限
+- 预见可能的误解和滥用
+
+### 指令优化技术
+
+通过精确的指令设计提升模型理解：
+
+**指令类型**：
+- 直接指令：明确的命令和要求
+- 间接指令：通过暗示和引导
+- 条件指令：基于条件的分支逻辑
+- 迭代指令：多步骤的逐步指导
+
+**优化方法**：
+- 使用明确的关键词和术语
+- 提供具体的操作步骤
+- 设定清晰的评估标准
+- 预设常见问题的处理方式
+
+### 示例驱动学习
+
+通过精心设计的示例引导模型行为：
+
+**示例选择**：
+- 代表性：覆盖典型场景
+- 多样性：涵盖不同情况
+- 难度梯度：从简单到复杂
+- 质量保证：确保示例正确性
+
+**展示方式**：
+- 少样本学习：2-5个精选示例
+- 思维链示例：展示推理过程
+- 错误案例：说明不正确的做法
+- 边界情况：处理特殊情况
+
+## 高级上下文技术
+
+### 检索增强生成（RAG）
+
+RAG是2025年上下文工程的核心技术，将外部知识检索与生成结合：
+
+**架构设计**：
 ```mermaid
 graph LR
-    A[明确角色] --> B[行为约束]
-    B --> C[输出规范]
-    C --> D[边界限制]
-    
-    A1[你是...] --> A
-    B1[你应该/不应该...] --> B
-    C1[输出格式...] --> C
-    D1[禁止...] --> D
+    Query[用户查询] --> Retriever[检索器]
+    Knowledge[知识库] --> Retriever
+    Retriever --> Context[上下文]
+    Context --> LLM[大语言模型]
+    LLM --> Response[生成回答]
 ```
 
-### 2.2 历史上下文管理
-
-管理对话历史和任务状态，实现多轮交互的连贯性。
-
-```python
-class ConversationManager:
-    def __init__(self, max_turns: int = 10):
-        self.max_turns = max_turns
-        self.short_term_memory = []  # 近期对话
-        self.long_term_memory = {}   # 重要信息摘要
-        
-    def add_turn(self, role: str, content: str):
-        """添加一轮对话"""
-        self.short_term_memory.append({
-            "role": role,
-            "content": content,
-            "timestamp": time.time()
-        })
-        
-        # 超出限制时压缩旧对话
-        if len(self.short_term_memory) > self.max_turns:
-            self._compress_old_turns()
-    
-    def _compress_old_turns(self):
-        """压缩旧对话为摘要"""
-        old_turns = self.short_term_memory[:5]
-        summary = self._summarize(old_turns)
-        
-        self.long_term_memory["summary"] = summary
-        self.short_term_memory = self.short_term_memory[5:]
-    
-    def get_context(self) -> list:
-        """获取当前上下文"""
-        context = []
-        
-        # 添加长期记忆摘要
-        if self.long_term_memory.get("summary"):
-            context.append({
-                "role": "system",
-                "content": f"之前的对话摘要：{self.long_term_memory['summary']}"
-            })
-        
-        # 添加近期对话
-        context.extend(self.short_term_memory)
-        
-        return context
-```
-
-**记忆管理策略**：
-
-```mermaid
-graph TB
-    subgraph Memory[记忆系统]
-        STM[短期记忆<br>最近 N 轮对话]
-        LTM[长期记忆<br>关键信息摘要]
-        WM[工作记忆<br>当前任务状态]
-    end
-    
-    Input[新输入] --> STM
-    STM --> |压缩| LTM
-    STM --> |提取| WM
-    
-    WM --> |组装| Context[上下文]
-    LTM --> |检索| Context
-    STM --> |包含| Context
-```
-
-### 2.3 检索增强生成（RAG）
-
-将外部知识动态注入上下文，扩展模型的知识边界。
-
-```python
-class RAGContextBuilder:
-    def __init__(self, vector_store, top_k: int = 5):
-        self.vector_store = vector_store
-        self.top_k = top_k
-        
-    def build_context(self, query: str) -> str:
-        """构建 RAG 上下文"""
-        # 1. 检索相关文档
-        docs = self.vector_store.similarity_search(query, k=self.top_k)
-        
-        # 2. 重排序（可选）
-        docs = self._rerank(query, docs)
-        
-        # 3. 格式化上下文
-        context = self._format_context(docs)
-        
-        return context
-    
-    def _format_context(self, docs: list) -> str:
-        """格式化检索结果"""
-        context_parts = []
-        for i, doc in enumerate(docs, 1):
-            context_parts.append(f"""
-[文档 {i}]
-来源：{doc.metadata.get('source', '未知')}
-内容：{doc.page_content}
-""")
-        return "\n".join(context_parts)
-```
-
-**RAG 流程**：
-
-```mermaid
-graph LR
-    Q[用户问题] --> E[Embedding]
-    E --> S[向量检索]
-    S --> R[重排序]
-    R --> F[格式化]
-    F --> C[上下文组装]
-    
-    C --> LLM[大模型]
-    Q --> LLM
-    LLM --> A[回答]
-```
-
-### 2.4 工具集成
-
-通过标准化接口扩展模型的能力边界。
-
-```python
-class ToolRegistry:
-    def __init__(self):
-        self.tools = {}
-        
-    def register(self, name: str, description: str, parameters: dict):
-        """注册工具"""
-        def decorator(func):
-            self.tools[name] = {
-                "function": func,
-                "description": description,
-                "parameters": parameters
-            }
-            return func
-        return decorator
-    
-    def get_tools_context(self) -> str:
-        """生成工具描述上下文"""
-        tools_desc = []
-        for name, tool in self.tools.items():
-            tools_desc.append(f"""
-工具名称：{name}
-描述：{tool['description']}
-参数：{json.dumps(tool['parameters'], ensure_ascii=False)}
-""")
-        return "\n".join(tools_desc)
-
-# 使用示例
-registry = ToolRegistry()
-
-@registry.register(
-    name="search_web",
-    description="搜索互联网获取最新信息",
-    parameters={"query": {"type": "string", "description": "搜索关键词"}}
-)
-def search_web(query: str) -> str:
-    # 实现搜索逻辑
-    pass
-
-@registry.register(
-    name="execute_code",
-    description="执行 Python 代码",
-    parameters={"code": {"type": "string", "description": "Python 代码"}}
-)
-def execute_code(code: str) -> str:
-    # 实现代码执行逻辑
-    pass
-```
-
-### 2.5 结构化输入输出
-
-定义清晰的数据格式，提高系统可靠性。
-
-```python
-from pydantic import BaseModel
-from typing import List, Optional
-
-class TaskInput(BaseModel):
-    """任务输入格式"""
-    task_type: str
-    description: str
-    constraints: Optional[List[str]] = None
-    
-class TaskOutput(BaseModel):
-    """任务输出格式"""
-    status: str  # success, failed, pending
-    result: str
-    steps: List[str]
-    tools_used: List[str]
-
-def build_structured_prompt(task: TaskInput) -> str:
-    """构建结构化提示"""
-    return f"""
-## 任务类型
-{task.task_type}
-
-## 任务描述
-{task.description}
-
-## 约束条件
-{chr(10).join(f'- {c}' for c in (task.constraints or []))}
-
-## 输出要求
-请按以下 JSON 格式输出：
-{{
-    "status": "success/failed/pending",
-    "result": "执行结果",
-    "steps": ["步骤1", "步骤2", ...],
-    "tools_used": ["工具1", "工具2", ...]
-}}
-"""
-```
-
-### 2.6 上下文压缩
-
-在保持关键信息的同时减少 token 使用。
-
-```python
-class ContextCompressor:
-    def __init__(self, llm, max_tokens: int = 2000):
-        self.llm = llm
-        self.max_tokens = max_tokens
-        
-    def compress(self, context: str) -> str:
-        """压缩上下文"""
-        current_tokens = self._count_tokens(context)
-        
-        if current_tokens <= self.max_tokens:
-            return context
-            
-        # 策略1：摘要压缩
-        summary = self._summarize(context)
-        
-        # 策略2：关键信息提取
-        key_info = self._extract_key_info(context)
-        
-        # 组合压缩结果
-        compressed = f"""
-[上下文摘要]
-{summary}
-
-[关键信息]
-{key_info}
-"""
-        return compressed
-    
-    def _summarize(self, text: str) -> str:
-        """生成摘要"""
-        prompt = f"请将以下内容压缩为简洁摘要，保留关键信息：\n{text}"
-        return self.llm.generate(prompt)
-    
-    def _extract_key_info(self, text: str) -> str:
-        """提取关键信息"""
-        prompt = f"请提取以下内容中的关键实体、数字和结论：\n{text}"
-        return self.llm.generate(prompt)
-```
-
-**压缩策略对比**：
-
-| 策略 | 适用场景 | 信息损失 | 计算成本 |
-|------|----------|----------|----------|
-| 截断 | 近期对话更重要 | 高 | 低 |
-| 摘要 | 需要整体理解 | 中 | 中 |
-| 选择性保留 | 任务相关性明确 | 低 | 中 |
-| 向量检索 | 知识库场景 | 低 | 高 |
-
-## 3. 上下文工程实践模式
-
-### 3.1 静态与动态上下文分离
-
-```mermaid
-graph TB
-    subgraph Static[静态上下文]
-        S1[系统提示]
-        S2[角色定义]
-        S3[输出格式]
-    end
-    
-    subgraph Dynamic[动态上下文]
-        D1[用户输入]
-        D2[检索结果]
-        D3[工具输出]
-        D4[对话历史]
-    end
-    
-    Static --> |固定部分| Assembler[上下文组装器]
-    Dynamic --> |变化部分| Assembler
-    Assembler --> Final[最终上下文]
-```
-
-```python
-class ContextAssembler:
-    def __init__(self, system_prompt: str):
-        self.system_prompt = system_prompt
-        
-    def assemble(
-        self,
-        user_input: str,
-        history: list = None,
-        rag_context: str = None,
-        tool_outputs: list = None
-    ) -> list:
-        """组装最终上下文"""
-        messages = []
-        
-        # 1. 系统提示（静态）
-        system_content = self.system_prompt
-        
-        # 2. 添加 RAG 上下文（动态）
-        if rag_context:
-            system_content += f"\n\n## 参考资料\n{rag_context}"
-            
-        messages.append({"role": "system", "content": system_content})
-        
-        # 3. 添加历史对话（动态）
-        if history:
-            messages.extend(history)
-            
-        # 4. 添加工具输出（动态）
-        if tool_outputs:
-            for output in tool_outputs:
-                messages.append({
-                    "role": "assistant",
-                    "content": f"工具调用结果：{output}"
-                })
-        
-        # 5. 当前用户输入
-        messages.append({"role": "user", "content": user_input})
-        
-        return messages
-```
-
-### 3.2 上下文窗口管理
-
-```mermaid
-graph LR
-    subgraph Window[上下文窗口 128K tokens]
-        W1[系统提示<br>2K]
-        W2[RAG 上下文<br>10K]
-        W3[对话历史<br>50K]
-        W4[当前输入<br>2K]
-        W5[预留输出<br>64K]
-    end
-```
-
-```python
-class WindowManager:
-    def __init__(self, max_tokens: int = 128000):
-        self.max_tokens = max_tokens
-        self.reserved_output = 64000  # 预留输出空间
-        self.available = max_tokens - self.reserved_output
-        
-    def allocate(
-        self,
-        system_tokens: int,
-        rag_tokens: int,
-        history_tokens: int,
-        input_tokens: int
-    ) -> dict:
-        """分配 token 预算"""
-        total_needed = system_tokens + rag_tokens + history_tokens + input_tokens
-        
-        if total_needed <= self.available:
-            return {
-                "system": system_tokens,
-                "rag": rag_tokens,
-                "history": history_tokens,
-                "input": input_tokens
-            }
-        
-        # 需要压缩，优先保证系统提示和当前输入
-        fixed = system_tokens + input_tokens
-        flexible = self.available - fixed
-        
-        # 按比例分配剩余空间
-        rag_ratio = 0.3
-        history_ratio = 0.7
-        
-        return {
-            "system": system_tokens,
-            "rag": int(flexible * rag_ratio),
-            "history": int(flexible * history_ratio),
-            "input": input_tokens
-        }
-```
-
-### 3.3 多轮任务的上下文演进
-
-```mermaid
-sequenceDiagram
-    participant U as 用户
-    participant CM as 上下文管理器
-    participant LLM as 大模型
-    participant T as 工具
-    
-    U->>CM: 任务请求
-    CM->>CM: 组装初始上下文
-    CM->>LLM: 请求（上下文 v1）
-    LLM->>CM: 需要调用工具
-    CM->>T: 执行工具
-    T->>CM: 工具结果
-    CM->>CM: 更新上下文（v2）
-    CM->>LLM: 请求（上下文 v2）
-    LLM->>CM: 最终回答
-    CM->>U: 返回结果
-```
-
-## 4. 高级上下文技术
-
-### 4.1 上下文缓存
-
-对于重复或相似的上下文，使用缓存减少计算开销。
-
-```python
-import hashlib
-from functools import lru_cache
-
-class ContextCache:
-    def __init__(self, max_size: int = 1000):
-        self.cache = {}
-        self.max_size = max_size
-        
-    def _hash_context(self, context: list) -> str:
-        """生成上下文哈希"""
-        content = json.dumps(context, sort_keys=True)
-        return hashlib.md5(content.encode()).hexdigest()
-    
-    def get(self, context: list) -> str:
-        """获取缓存的响应"""
-        key = self._hash_context(context)
-        return self.cache.get(key)
-    
-    def set(self, context: list, response: str):
-        """缓存响应"""
-        if len(self.cache) >= self.max_size:
-            # 简单的 FIFO 淘汰
-            oldest_key = next(iter(self.cache))
-            del self.cache[oldest_key]
-            
-        key = self._hash_context(context)
-        self.cache[key] = response
-```
-
-### 4.2 上下文路由
-
-根据任务类型选择不同的上下文模板。
-
-```python
-class ContextRouter:
-    def __init__(self):
-        self.routes = {}
-        
-    def register_route(self, task_type: str, context_builder):
-        """注册上下文路由"""
-        self.routes[task_type] = context_builder
-        
-    def route(self, task_type: str, **kwargs) -> list:
-        """路由到对应的上下文构建器"""
-        builder = self.routes.get(task_type)
-        if not builder:
-            raise ValueError(f"未知任务类型: {task_type}")
-        return builder(**kwargs)
-
-# 使用示例
-router = ContextRouter()
-
-router.register_route("code_review", lambda **kw: [
-    {"role": "system", "content": "你是代码审查专家..."},
-    {"role": "user", "content": kw.get("code")}
-])
-
-router.register_route("translation", lambda **kw: [
-    {"role": "system", "content": "你是专业翻译..."},
-    {"role": "user", "content": f"翻译: {kw.get('text')}"}
-])
-```
-
-### 4.3 上下文安全
-
-防止提示注入和敏感信息泄露。
-
-```python
-class ContextSanitizer:
-    def __init__(self):
-        self.injection_patterns = [
-            r"忽略之前的指令",
-            r"ignore previous instructions",
-            r"你现在是",
-            r"system:",
-        ]
-        self.sensitive_patterns = [
-            r"\b\d{11}\b",           # 手机号
-            r"\b\d{18}\b",           # 身份证
-            r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",  # 邮箱
-        ]
-        
-    def sanitize_input(self, text: str) -> str:
-        """清理用户输入"""
-        # 检测注入攻击
-        for pattern in self.injection_patterns:
-            if re.search(pattern, text, re.IGNORECASE):
-                raise SecurityError("检测到潜在的提示注入攻击")
-        
-        return text
-    
-    def mask_sensitive(self, text: str) -> str:
-        """遮盖敏感信息"""
-        for pattern in self.sensitive_patterns:
-            text = re.sub(pattern, "[已脱敏]", text)
-        return text
-```
-
-## 5. 上下文工程最佳实践
-
-### 5.1 设计原则
-
-```mermaid
-mindmap
-    root((上下文工程原则))
-        模块化
-            组件解耦
-            独立维护
-            灵活组合
-        可观测
-            日志记录
-            Token统计
-            效果追踪
-        渐进式
-            先简单后复杂
-            迭代优化
-            A/B测试
-        健壮性
-            错误处理
-            降级策略
-            安全防护
-```
-
-### 5.2 常见陷阱
-
-| 陷阱 | 问题描述 | 解决方案 |
-|------|----------|----------|
-| 上下文膨胀 | 上下文无限增长导致超出限制 | 设置上限，定期压缩 |
-| 信息冗余 | 重复信息占用 token | 去重和摘要 |
-| 顺序敏感 | 信息顺序影响模型理解 | 固定模板，关键信息靠前 |
-| 格式混乱 | 不同来源格式不一致 | 统一格式化处理 |
-| 安全漏洞 | 提示注入攻击 | 输入清理和验证 |
-
-### 5.3 调试与优化
-
-```python
-class ContextDebugger:
-    def __init__(self):
-        self.logs = []
-        
-    def log_context(self, stage: str, context: list):
-        """记录上下文状态"""
-        self.logs.append({
-            "stage": stage,
-            "timestamp": time.time(),
-            "token_count": self._count_tokens(context),
-            "context_snapshot": context[:2]  # 只保存部分
-        })
-    
-    def analyze(self) -> dict:
-        """分析上下文演进"""
-        return {
-            "total_stages": len(self.logs),
-            "token_growth": [log["token_count"] for log in self.logs],
-            "bottlenecks": self._find_bottlenecks()
-        }
-    
-    def _find_bottlenecks(self) -> list:
-        """找出 token 增长瓶颈"""
-        bottlenecks = []
-        for i in range(1, len(self.logs)):
-            growth = self.logs[i]["token_count"] - self.logs[i-1]["token_count"]
-            if growth > 1000:  # 阈值
-                bottlenecks.append({
-                    "stage": self.logs[i]["stage"],
-                    "growth": growth
-                })
-        return bottlenecks
-```
-
-## 6. 本章小结
-
-```mermaid
-mindmap
-    root((Context Engineering))
-        核心概念
-            从Prompt到Context
-            系统级信息管理
-            动态上下文组装
-        关键组件
-            系统提示
-            历史管理
-            RAG集成
-            工具接口
-            结构化IO
-            压缩优化
-        实践模式
-            静态动态分离
-            窗口管理
-            缓存路由
-        最佳实践
-            模块化设计
-            可观测性
-            安全防护
-```
-
-**核心要点**：
-- Context Engineering 是 Prompt Engineering 的自然演进，关注系统级的信息管理
-- 核心组件包括系统提示、历史管理、RAG、工具集成、结构化 IO 和上下文压缩
-- 静态与动态上下文分离是关键设计模式
-- 上下文窗口管理需要合理分配 token 预算
-- 安全防护和可观测性是生产环境的必备能力
-
-## 思考题
-
-1. 在一个客服 Agent 中，如何设计上下文管理策略来处理用户的多轮复杂问题？
-2. 当 RAG 检索到的内容与用户问题关联度不高时，如何优化上下文质量？
-3. 如何在保证上下文完整性的同时，最大化减少 token 消耗？
+**技术优势**：
+- 减少模型幻觉，提供事实依据
+- 支持实时知识更新
+- 可解释性和可追溯性
+- 降低训练成本和复杂度
+
+**2025年发展趋势**：
+- 混合检索：结合稠密和稀疏检索
+- 多模态检索：支持图像、音频等
+- 实时更新：动态知识库同步
+- 个性化检索：基于用户偏好优化
+
+### 思维链技术
+
+引导模型展示推理过程，提升复杂任务的解决能力：
+
+**核心方法**：
+- 逐步分解：将复杂问题拆解
+- 中间步骤：展示推理中间结果
+- 自我验证：检查答案的合理性
+- 错误修正：识别和纠正错误
+
+**应用场景**：
+- 数学问题求解
+- 逻辑推理任务
+- 复杂决策分析
+- 创意思维过程
+
+**2025年创新**：
+- 自动思维链生成
+- 分层思维链组织
+- 多路径并行推理
+- 动态思维链调整
+
+### 记忆管理系统
+
+为模型提供持久化的记忆能力：
+
+**记忆类型**：
+- 短期记忆：当前对话上下文
+- 长期记忆：历史交互信息
+- 语义记忆：通用知识和概念
+- 情景记忆：特定事件和经验
+
+**管理策略**：
+- 记忆压缩：保留关键信息
+- 重要性评分：动态优先级排序
+- 遗忘机制：避免信息过载
+- 关联建立：构建知识网络
+
+### 工具调用集成
+
+将外部工具和能力集成到上下文中：
+
+**工具类型**：
+- 计算工具：数学计算和数据分析
+- 搜索工具：实时信息检索
+- API接口：外部服务调用
+- 创作工具：图像生成、代码编辑
+
+**集成方式**：
+- 函数调用：标准的API调用格式
+- 插件系统：可扩展的工具架构
+- 工作流编排：多工具协同执行
+- 错误处理：异常情况的恢复
+
+## 上下文优化策略
+
+### 长上下文管理
+
+随着模型上下文窗口的扩大，高效管理长上下文变得重要：
+
+**挑战**：
+- 信息密度不均匀
+- 注意力分散问题
+- 计算成本增加
+- 相关性判断困难
+
+**解决方案**：
+- 信息分层：重要信息优先放置
+- 摘要压缩：保留核心内容
+- 分块处理：逻辑分组管理
+- 动态筛选：实时相关性评估
+
+### 上下文压缩技术
+
+在有限空间内最大化信息价值：
+
+**压缩方法**：
+- 关键词提取：保留核心术语
+- 句子压缩：简化表达方式
+- 语义抽象：高层次的概括
+- 结构化表示：表格和列表形式
+
+**质量保证**：
+- 信息完整性检查
+- 语义一致性验证
+- 可读性评估
+- 效果测试反馈
+
+### 个性化上下文
+
+根据用户特征定制上下文内容：
+
+**个性化维度**：
+- 知识背景：教育水平、专业领域
+- 语言风格：正式程度、表达习惯
+- 兴趣偏好：话题关注、内容类型
+- 交互历史：过往反馈和行为模式
+
+**实现方式**：
+- 用户画像构建
+- 偏好学习算法
+- 动态调整机制
+- 隐私保护措施
+
+## 2025年技术趋势
+
+### 自适应上下文
+
+上下文系统能够根据情况自动调整：
+
+**智能特性**：
+- 实时性能监控
+- 动态策略调整
+- 自我优化学习
+- 异常自动恢复
+
+**应用价值**：
+- 减少人工配置
+- 提升系统稳定性
+- 适应环境变化
+- 持续性能改进
+
+### 多模态上下文
+
+整合文本、图像、音频等多种模态：
+
+**技术融合**：
+- 跨模态对齐
+- 统一表示学习
+- 模态间互补
+- 联合推理机制
+
+**应用场景**：
+- 视觉问答系统
+- 多媒体内容分析
+- 沉浸式交互体验
+- 创意内容生成
+
+### 协作上下文工程
+
+多人协作的上下文管理系统：
+
+**协作特性**：
+- 版本控制
+- 权限管理
+- 变更追踪
+- 团队共享
+
+**工具支持**：
+- 可视化编辑器
+- 模板库管理
+- 效果分析工具
+- 自动化测试框架
+
+### 上下文安全与伦理
+
+确保上下文工程的安全性和合规性：
+
+**安全考虑**：
+- 敏感信息过滤
+- 恶意输入检测
+- 输出内容审核
+- 隐私保护机制
+
+**伦理准则**：
+- 公平性和包容性
+- 透明度和可解释性
+- 用户自主控制
+- 社会责任考虑
+
+## 实战应用指南
+
+### 上下文工程流程
+
+**第一步：需求分析**
+- 明确任务目标和要求
+- 分析用户特征和场景
+- 识别关键成功因素
+- 评估资源约束条件
+
+**第二步：原型设计**
+- 选择基础模板和框架
+- 设计核心提示结构
+- 准备示例和测试用例
+- 建立评估指标体系
+
+**第三步：迭代优化**
+- 小规模测试验证
+- 收集反馈和性能数据
+- 分析问题和改进方向
+- 持续优化和调整
+
+**第四步：部署监控**
+- 生产环境部署
+- 实时性能监控
+- 用户反馈收集
+- 持续改进循环
+
+### 常见应用场景
+
+#### 客户服务机器人
+
+**上下文设计要点**：
+- 明确服务范围和边界
+- 设计友好的对话风格
+- 准备常见问题解答库
+- 建立人工转接机制
+
+**优化策略**：
+- 个性化服务体验
+- 情感识别和响应
+- 多语言支持
+- 实时知识更新
+
+#### 内容创作助手
+
+**上下文设计要点**：
+- 定义创作目标和风格
+- 提供结构化创作框架
+- 包含质量标准指导
+- 设置创意边界和约束
+
+**优化策略**：
+- 领域专业知识集成
+- 创意灵感激发
+- 多版本比较选择
+- 实时反馈调整
+
+#### 教育辅导系统
+
+**上下文设计要点**：
+- 适配学习水平和进度
+- 提供循序渐进的指导
+- 包含丰富的教学资源
+- 设计互动和练习环节
+
+**优化策略**：
+- 个性化学习路径
+- 错误模式识别
+- 学习效果评估
+- 家长教师协作
+
+### 性能评估方法
+
+#### 量化评估指标
+
+**质量指标**：
+- 准确性：回答正确率
+- 相关性：与查询的匹配度
+- 完整性：信息覆盖程度
+- 一致性：逻辑连贯性
+
+**效率指标**：
+- 响应时间：生成速度
+- 资源消耗：计算成本
+- 吞吐量：并发处理能力
+- 稳定性：系统可靠性
+
+#### 质性评估方法
+
+**用户评估**：
+- 满意度调查
+- 专家评审
+- A/B测试对比
+- 实际使用反馈
+
+**案例分析**：
+- 典型场景测试
+- 边界情况验证
+- 长期效果追踪
+- 竞品对比分析
+
+## 工具和平台
+
+### 开发工具
+
+**提示词编辑器**：
+- 可视化界面设计
+- 语法高亮和检查
+- 版本管理功能
+- 协作编辑支持
+
+**测试平台**：
+- 批量测试执行
+- 性能基准测试
+- 结果对比分析
+- 自动化报告生成
+
+**监控工具**：
+- 实时性能监控
+- 异常检测告警
+- 使用统计分析
+- 成本跟踪管理
+
+### 部署平台
+
+**云服务平台**：
+- 弹性伸缩能力
+- 全球部署网络
+- 安全防护机制
+- 运维管理工具
+
+**本地部署**：
+- 私有云解决方案
+- 边缘计算支持
+- 离线运行能力
+- 数据安全保障
+
+**混合部署**：
+- 云边协同架构
+- 动态负载均衡
+- 灾备恢复机制
+- 统一管理界面
+
+## 最佳实践建议
+
+### 设计原则
+
+**用户中心**：
+- 深入理解用户需求
+- 关注用户体验
+- 持续收集反馈
+- 快速迭代改进
+
+**简洁有效**：
+- 避免过度复杂化
+- 专注核心功能
+- 保持清晰结构
+- 便于维护扩展
+
+**可扩展性**：
+- 模块化设计
+- 标准化接口
+- 灵活配置机制
+- 插件式架构
+
+**安全可靠**：
+- 输入验证和过滤
+- 输出内容审核
+- 异常处理机制
+- 隐私保护措施
+
+### 常见陷阱避免
+
+**过度设计**：
+- 避免不必要的复杂性
+- 专注实际需求
+- 保持简单有效
+- 逐步迭代完善
+
+**忽略测试**：
+- 建立完善测试体系
+- 覆盖各种场景
+- 持续验证效果
+- 及时发现问题
+
+**静态思维**：
+- 保持灵活性和适应性
+- 关注技术发展趋势
+- 准备应对变化
+- 建立学习机制
+
+**孤立开发**：
+- 加强团队协作
+- 分享经验和知识
+- 参与社区交流
+- 借鉴最佳实践
+
+## 未来展望
+
+### 技术发展方向
+
+**智能化程度提升**：
+- 自主学习和优化
+- 预测性上下文构建
+- 主动建议和推荐
+- 智能异常处理
+
+**多模态深度融合**：
+- 统一的多模态表示
+- 跨模态推理能力
+- 沉浸式交互体验
+- 创意内容生成
+
+**个性化和适应性**：
+- 深度用户理解
+- 动态策略调整
+- 情境感知能力
+- 预期行为预测
+
+### 应用前景
+
+**企业智能化转型**：
+- 业务流程自动化
+- 决策支持系统
+- 知识管理和共享
+- 创新能力提升
+
+**教育个性化发展**：
+- 自适应学习系统
+- 智能辅导助手
+- 学习效果优化
+- 教育资源均衡
+
+**医疗健康服务**：
+- 诊断辅助系统
+- 个性化治疗方案
+- 健康管理平台
+- 医学教育培训
+
+## 本章小结
+
+上下文工程是连接大语言模型能力与实际应用需求的关键桥梁：
+
+- **核心价值**：通过精心设计上下文最大化模型性能
+- **技术体系**：从基础提示到高级增强技术的完整框架
+- **实践指导**：系统化的设计、开发、优化流程
+- **未来趋势**：智能化、多模态、个性化发展方向
+- **应用前景**：广泛的行业应用和社会价值
+
+对于 LLM 初学者来说，掌握上下文工程的基本原理和核心技术，将帮助你在实际项目中充分发挥大语言模型的潜力，构建真正有价值的 AI 应用。
 
 ## 延伸阅读
 
-- [LangChain: Building Context-Aware Applications](https://python.langchain.com/)
-- [Prompt Engineering Guide](https://www.promptingguide.ai/)
-- [Building LLM Applications: From Prompts to Context](https://lilianweng.github.io/posts/2023-06-23-agent/)
+- Prompt Engineering Guide
+- Retrieval-Augmented Generation: Survey and Frontiers
+- Chain-of-Thought Prompting Elicits Reasoning
+- Constitutional AI: Harmlessness from AI Feedback
+- The Rise and Potential of Large Language Models
 
 ---
 
-*下一篇：[常见模型评测的维度、方法和系统](./26-model-evaluation.md) - 了解如何科学评估大模型能力*
+*下一篇：[大模型评测 Evaluation](./26-evaluation.md)*

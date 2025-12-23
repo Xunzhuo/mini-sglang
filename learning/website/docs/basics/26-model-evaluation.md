@@ -129,7 +129,7 @@ D. 土星
 答案：B
 ```
 
-**主流模型表现（2024）**：
+**主流模型表现（2025年初）**：
 
 | 模型 | MMLU 分数 |
 |------|-----------|
@@ -271,7 +271,55 @@ graph LR
 | Claude 3.5 Sonnet | 96.4% |
 | LLaMA-3.1-405B | 96.8% |
 
-### 3.5 更多基准测试
+## 4. 2025年评测基准新发展
+
+### 4.1 新兴高难度基准
+
+随着模型能力的快速提升，传统基准逐渐饱和，2025年出现了更具挑战性的评测基准：
+
+**GPQA (Graduate-Level Google-Proof Q&A)**
+- 专门面向研究生水平的科学问题
+- 涵盖物理、生物、化学、数学等领域
+- 问题设计确保无法通过搜索直接找到答案
+- 专门测试模型的深度推理和知识整合能力
+
+**MMLU-Pro (MMLU增强版)**
+- 在原 MMLU 基础上增加题目难度
+- 包含更多需要多步推理的问题
+- 引入动态对抗性评估机制
+- 更好地区分顶尖模型的能力差异
+
+**Big-Bench Hard (BBH) 的扩展**
+- 从原始 Big-Bench 中筛选最具挑战性的23个任务
+- 专注于测试模型的复杂推理能力
+- 2025年新增了更多任务类型，如数学证明、程序推理
+
+### 4.2 多模态评测基准
+
+**MMMU (Multimodal Massive Multitask Understanding)**
+- 跨学科的图文理解评测基准
+- 涵盖理工科、人文学科等30个学科
+- 需要模型同时理解图像和文本信息
+- 测试真实的跨模态推理能力
+
+**MathVista**
+- 数学视觉推理基准
+- 包含几何图形、图表分析等视觉数学问题
+- 测试模型的视觉理解和数学推理结合能力
+
+### 4.3 安全与对齐评测
+
+**TruthfulQA 的增强版本**
+- 更加注重模型的诚实性和准确性
+- 新增了更多常见误解和虚假信息场景
+- 测试模型避免生成虚假信息的能力
+
+**AI Safety Benchmark**
+- 专门测试模型的潜在风险
+- 包括偏见检测、毒性内容生成、隐私泄露等
+- Anthropic 和 OpenAI 联合推动的标准化评测
+
+## 5. 更多基准测试
 
 ```mermaid
 graph TB
@@ -311,9 +359,9 @@ graph TB
 | AlpacaEval | 指令遵循 | 805 | Win Rate |
 | TruthfulQA | 真实性 | 817 | 真实/有信息 |
 
-## 4. 评测方法论
+## 6. 评测方法论
 
-### 4.1 评测范式
+### 6.1 评测范式
 
 ```mermaid
 graph TB
@@ -331,30 +379,15 @@ graph TB
 
 **Zero-shot vs Few-shot**
 
-```python
-# Zero-shot 示例
-prompt_zero = """
-问题：法国的首都是什么？
-答案：
-"""
+Zero-shot 直接提问模型，不提供示例：
+- 优点：测试模型的真实能力，不依赖示例质量
+- 缺点：可能无法完全理解任务要求
 
-# Few-shot (3-shot) 示例
-prompt_few = """
-问题：日本的首都是什么？
-答案：东京
+Few-shot 提供少量示例引导模型：
+- 优点：帮助模型理解任务格式和要求
+- 缺点：示例选择会影响结果，可能引入偏差
 
-问题：英国的首都是什么？
-答案：伦敦
-
-问题：德国的首都是什么？
-答案：柏林
-
-问题：法国的首都是什么？
-答案：
-"""
-```
-
-### 4.2 评估指标
+### 6.2 评估指标
 
 **客观指标**
 
@@ -382,12 +415,11 @@ graph LR
     A --> |用户投票| ELO[ELO分数]
 ```
 
-### 4.3 模型作为评委 (LLM-as-Judge)
+### 6.3 模型作为评委 (LLM-as-Judge)
 
-使用强大的 LLM 评估其他模型的输出质量。
+使用强大的 LLM 评估其他模型的输出质量。这种方法的提示设计通常包括：
 
-```python
-judge_prompt = """
+```
 请评估以下两个回答的质量，从 1-10 打分。
 
 用户问题：{question}
@@ -403,7 +435,6 @@ judge_prompt = """
 4. 清晰度：表达是否清楚
 
 请给出评分和理由：
-"""
 ```
 
 **优缺点**：
@@ -414,9 +445,9 @@ judge_prompt = """
 | 可大规模使用 | 对细微差异不敏感 |
 | 相对一致 | 位置偏见（倾向第一个） |
 
-## 5. 主流评测系统
+## 7. 主流评测系统
 
-### 5.1 OpenCompass（司南）
+### 7.1 OpenCompass（司南）
 
 **概述**：上海人工智能实验室开发的开源评测平台。
 
@@ -437,41 +468,29 @@ graph TB
 - 提供标准化评测流程
 - 开源可复现
 
-**评测命令示例**：
+**2025年新特性**：
+- 新增对 MMLU-Pro、GPQA 的支持
+- 增强的多模态评测能力
+- 更好的可视化分析工具
+- 支持分布式评测
 
-```bash
-# 评测 LLaMA 在 MMLU 上的表现
-python run.py \
-    --models llama-7b \
-    --datasets mmlu \
-    --partition llmeval
-```
-
-### 5.2 lm-evaluation-harness
+### 7.2 lm-evaluation-harness
 
 **概述**：EleutherAI 开发的评测框架，被广泛使用。
 
-```python
-from lm_eval import evaluator, tasks
-
-# 运行评测
-results = evaluator.simple_evaluate(
-    model="hf",
-    model_args="pretrained=meta-llama/Llama-2-7b",
-    tasks=["hellaswag", "mmlu", "arc_easy"],
-    num_fewshot=5,
-    batch_size=16
-)
-
-print(results["results"])
-```
+**运行评测的基本流程**：
+1. 指定模型和数据集
+2. 配置评测参数（few-shot 数量、batch size等）
+3. 执行评测并收集结果
+4. 生成详细的评测报告
 
 **特点**：
 - 200+ 评测任务
 - 支持多种模型接口（HuggingFace、OpenAI API 等）
 - 社区活跃，持续更新
+- 良好的扩展性
 
-### 5.3 Chatbot Arena
+### 7.3 Chatbot Arena
 
 **概述**：基于人类偏好的大规模众包评测平台。
 
@@ -491,7 +510,7 @@ graph LR
 - ELO 评分系统
 - 覆盖 100+ 模型
 
-**当前排行榜（2024.12 部分数据）**：
+**当前排行榜（2025年初）**：
 
 | 排名 | 模型 | ELO 分数 |
 |------|------|----------|
@@ -501,7 +520,7 @@ graph LR
 | 4 | GPT-4 Turbo | 1256 |
 | 5 | LLaMA-3.1-405B | 1247 |
 
-### 5.4 HELM (Holistic Evaluation of Language Models)
+### 7.4 HELM (Holistic Evaluation of Language Models)
 
 **概述**：斯坦福大学开发的全面评测框架。
 
@@ -531,9 +550,30 @@ graph TB
 - 42 个场景
 - 强调全面性和透明度
 
-## 6. 评测挑战与趋势
+**2025年更新**：
+- 新增多模态评测模块
+- 增强的公平性评估
+- 更详细的效率指标
+- 支持 Agent 评测
 
-### 6.1 数据污染问题
+### 7.5 OpenAI Evals
+
+**概述**：OpenAI 开源的自定义评测框架。
+
+**核心功能**：
+- 支持自定义评测数据集
+- 灵活的评估指标定义
+- 与 OpenAI 模型 API 深度集成
+- 社区贡献的评测库
+
+**2025年发展**：
+- 更好的多模态支持
+- 增强的安全性评测
+- 改进的批量评测能力
+
+## 8. 评测挑战与趋势
+
+### 8.1 数据污染问题
 
 ```mermaid
 graph LR
@@ -554,11 +594,16 @@ graph LR
 - 对比不同版本模型在同一测试集上的表现跳跃
 - 使用 canary 字符串检测
 
-### 6.2 评测饱和
+**2025年新进展**：
+- 自动化污染检测工具
+- 动态生成测试题目
+- 联邦评测机制
+
+### 8.2 评测饱和
 
 随着模型能力提升，许多基准测试已接近饱和。
 
-| 基准 | 2022 SOTA | 2024 SOTA | 差距 |
+| 基准 | 2022 SOTA | 2025 SOTA | 差距 |
 |------|-----------|-----------|------|
 | MMLU | 70.7% | 88.7% | +18% |
 | HellaSwag | 89.2% | 96.0% | +6.8% |
@@ -568,8 +613,9 @@ graph LR
 - 开发更难的基准（MMLU-Pro、GPQA）
 - 评测更复杂的能力（Agent、长上下文）
 - 关注安全和对齐评测
+- 引入动态评测机制
 
-### 6.3 未来趋势
+### 8.3 2025年趋势
 
 ```mermaid
 graph TB
@@ -582,9 +628,24 @@ graph TB
     end
 ```
 
-## 7. 评测实践指南
+**动态评测**：
+- 根据模型能力自动调整题目难度
+- 实时生成新的测试题目
+- 避免模型过拟合固定测试集
 
-### 7.1 选择合适的基准
+**Agent 评测**：
+- 评测模型的工具使用能力
+- 多步骤任务完成度评估
+- 实际环境下的表现测试
+
+**效率评测**：
+- 推理速度和延迟测量
+- 资源消耗分析
+- 成本效益评估
+
+## 9. 评测实践指南
+
+### 9.1 选择合适的基准
 
 ```mermaid
 flowchart TD
@@ -596,68 +657,68 @@ flowchart TD
     Q1 --> |安全性| S[TruthfulQA + ToxiGen]
 ```
 
-### 7.2 评测配置建议
+### 9.2 评测配置建议
 
-```python
-evaluation_config = {
-    # 通用能力评测
-    "general": {
-        "datasets": ["mmlu", "hellaswag", "arc_challenge"],
-        "few_shot": 5,
-        "metrics": ["accuracy"]
-    },
-    
-    # 推理能力评测
-    "reasoning": {
-        "datasets": ["gsm8k", "math", "bbh"],
-        "few_shot": 8,
-        "metrics": ["accuracy"],
-        "use_cot": True  # 使用思维链
-    },
-    
-    # 代码能力评测
-    "coding": {
-        "datasets": ["humaneval", "mbpp"],
-        "few_shot": 0,  # 通常 zero-shot
-        "metrics": ["pass@1", "pass@10"],
-        "temperature": 0.8  # 采样多个结果
-    },
-    
-    # 安全性评测
-    "safety": {
-        "datasets": ["truthfulqa", "toxigen"],
-        "few_shot": 0,
-        "metrics": ["mc1", "mc2", "toxicity_score"]
-    }
-}
-```
+**通用能力评测配置**：
+- 数据集：MMLU、HellaSwag、ARC Challenge
+- Few-shot 数量：5
+- 评估指标：准确率
 
-### 7.3 结果分析
+**推理能力评测配置**：
+- 数据集：GSM8K、MATH、BBH
+- Few-shot 数量：8
+- 评估指标：准确率
+- 使用思维链提示
 
-```python
-def analyze_results(results: dict) -> dict:
-    """分析评测结果"""
-    analysis = {
-        "strengths": [],
-        "weaknesses": [],
-        "recommendations": []
-    }
-    
-    # 识别优势领域
-    for task, score in results.items():
-        if score > 0.85:
-            analysis["strengths"].append(f"{task}: {score:.1%}")
-        elif score < 0.60:
-            analysis["weaknesses"].append(f"{task}: {score:.1%}")
-    
-    # 生成建议
-    if "math" in [w.split(":")[0] for w in analysis["weaknesses"]]:
-        analysis["recommendations"].append("考虑增加数学推理训练数据")
-    
-    return analysis
-```
+**代码能力评测配置**：
+- 数据集：HumanEval、MBPP
+- Few-shot 数量：0（通常 zero-shot）
+- 评估指标：pass@1、pass@10
+- 温度设置：0.8（采样多个结果）
 
-## 8. 本章小结
+**安全性评测配置**：
+- 数据集：TruthfulQA、ToxiGen
+- Few-shot 数量：0
+- 评估指标：真实性分数、毒性分数
+
+### 9.3 结果分析
+
+**性能画像分析**：
+- 识别模型的优势领域
+- 发现明显的性能短板
+- 对比同类模型的表现
+- 分析不同评测条件下的稳定性
+
+**改进建议生成**：
+- 基于评测结果制定改进策略
+- 针对弱项调整训练数据
+- 优化模型架构和训练方法
+- 设计针对性的微调任务
+
+## 10. 评测的可重复性与透明度
+
+### 10.1 可重复性挑战
+
+- **模型版本**：不同版本的模型可能有显著差异
+- **随机种子**：采样模型的随机性影响结果
+- **环境差异**：硬件和软件环境的变化
+- **提示设计**：细微的提示改动可能影响结果
+
+### 10.2 提升透明度
+
+**标准化报告**：
+- 详细的实验配置说明
+- 完整的统计信息
+- 错误分析和案例研究
+- 与基线方法的对比
+
+**开放数据集**：
+- 提供测试数据集的访问
+- 公布评分标准和方法
+- 分享评测代码和工具
+- 建立社区验证机制
+
+## 11. 本章小结
 
 ```mermaid
 mindmap
@@ -672,6 +733,11 @@ mindmap
             HellaSwag
             HumanEval
             GSM8K
+        2025新发展
+            GPQA
+            MMLU-Pro
+            多模态评测
+            Agent评测
         评测方法
             Zero/Few-shot
             LLM-as-Judge
@@ -689,10 +755,12 @@ mindmap
 
 **核心要点**：
 - LLM 评测需要覆盖知识、推理、代码、安全等多个维度
-- MMLU、HellaSwag、HumanEval、GSM8K 是最常用的基准测试
+- 2025年出现了 GPQA、MMLU-Pro 等更具挑战性的基准
+- 传统基准如 MMLU、HellaSwag 逐渐饱和，需要更难的测试
 - 评测方法包括自动评测和人工/模型评估
 - 数据污染和评测饱和是当前面临的主要挑战
 - 评测系统正在向动态化、多模态、Agent 方向发展
+- 可重复性和透明度对评测的科学性至关重要
 
 ## 思考题
 
@@ -706,6 +774,7 @@ mindmap
 - [Chatbot Arena Leaderboard](https://chat.lmsys.org/)
 - [HELM: Holistic Evaluation of Language Models](https://crfm.stanford.edu/helm/)
 - [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness)
+- [GPQA: Graduate-Level Google-Proof Q&A Benchmark](https://arxiv.org/abs/2311.12022)
 
 ---
 

@@ -105,122 +105,25 @@ sequenceDiagram
     A->>U: 返回最终答案
 ```
 
-### 2.3 ReAct 实现
+### 2.3 ReAct 实现要素
 
-```python
-from typing import Callable, Dict, List
+**思考（Thought）设计**：
+- 当前状态分析
+- 可用行动评估
+- 下一步决策理由
+- 目标完成度判断
 
-class ReActAgent:
-    def __init__(self, llm, tools: Dict[str, Callable], max_steps: int = 10):
-        self.llm = llm
-        self.tools = tools
-        self.max_steps = max_steps
-        self.history = []
-        
-    def run(self, task: str) -> str:
-        """执行 ReAct 循环"""
-        self.history = []
-        
-        for step in range(self.max_steps):
-            # 生成 Thought 和 Action
-            prompt = self._build_prompt(task)
-            response = self.llm.generate(prompt)
-            
-            # 解析响应
-            thought, action, action_input = self._parse_response(response)
-            
-            # 记录 Thought
-            self.history.append(f"Thought {step+1}: {thought}")
-            
-            # 检查是否完成
-            if action == "Finish":
-                return action_input
-            
-            # 执行 Action
-            if action in self.tools:
-                observation = self.tools[action](action_input)
-            else:
-                observation = f"未知工具: {action}"
-            
-            # 记录 Action 和 Observation
-            self.history.append(f"Action {step+1}: {action}[{action_input}]")
-            self.history.append(f"Observation {step+1}: {observation}")
-        
-        return "达到最大步数限制"
-    
-    def _build_prompt(self, task: str) -> str:
-        """构建提示词"""
-        tools_desc = "\n".join([
-            f"- {name}: {func.__doc__}" 
-            for name, func in self.tools.items()
-        ])
-        
-        history_text = "\n".join(self.history)
-        
-        return f"""
-你是一个能够使用工具解决问题的智能助手。
+**行动（Action）规范**：
+- 工具名称标准化
+- 参数格式统一
+- 错误处理机制
+- 执行结果验证
 
-可用工具：
-{tools_desc}
-- Finish: 当任务完成时使用，输入为最终答案
-
-任务：{task}
-
-{history_text}
-
-请按以下格式输出：
-Thought: 你的思考过程
-Action: 工具名称
-Action Input: 工具输入
-
-"""
-    
-    def _parse_response(self, response: str) -> tuple:
-        """解析模型响应"""
-        thought = ""
-        action = ""
-        action_input = ""
-        
-        for line in response.split("\n"):
-            if line.startswith("Thought:"):
-                thought = line[8:].strip()
-            elif line.startswith("Action:"):
-                action = line[7:].strip()
-            elif line.startswith("Action Input:"):
-                action_input = line[13:].strip()
-        
-        return thought, action, action_input
-
-
-# 定义工具
-def search(query: str) -> str:
-    """搜索互联网获取信息"""
-    # 模拟搜索
-    return f"搜索结果：关于 '{query}' 的信息..."
-
-def calculator(expression: str) -> str:
-    """计算数学表达式"""
-    try:
-        result = eval(expression)
-        return str(result)
-    except:
-        return "计算错误"
-
-def lookup(term: str) -> str:
-    """查询知识库"""
-    # 模拟知识库查询
-    return f"'{term}' 的定义是..."
-
-# 使用示例
-tools = {
-    "Search": search,
-    "Calculator": calculator,
-    "Lookup": lookup
-}
-
-agent = ReActAgent(llm, tools)
-result = agent.run("2024年诺贝尔物理学奖得主是谁？他们的主要贡献是什么？")
-```
+**观察（Observation）处理**：
+- 结果格式标准化
+- 错误信息提取
+- 成功状态判断
+- 反馈信息整合
 
 ### 2.4 ReAct 示例执行过程
 
@@ -240,7 +143,16 @@ Action Input: 2024年美国总统大选的获胜者是唐纳德·特朗普，
 他将成为美国第47任总统。
 ```
 
-### 2.5 ReAct 的优势与局限
+### 2.5 ReAct++ (2025年发展)
+
+**ReAct++** 是 2025 年 ReAct 框架的重要增强版本，主要改进包括：
+
+- **自纠正推理循环**：减少 Agent 响应中的幻觉
+- **自适应规划**：根据任务复杂度动态调整推理深度
+- **工具使用效率提升**：智能选择最优工具组合
+- **并行执行支持**：同时执行多个独立行动
+
+### 2.6 ReAct 的优势与局限
 
 | 优势 | 局限 |
 |------|------|
@@ -271,117 +183,22 @@ graph TB
 2. **Evaluator（评估者）**：评估执行结果，判断成功/失败
 3. **Self-Reflection（自我反思）**：分析失败原因，生成改进策略
 
-### 3.3 Reflexion 实现
+### 3.3 Reflexion 工作机制
 
-```python
-class ReflexionAgent:
-    def __init__(self, llm, tools: dict, max_trials: int = 3):
-        self.llm = llm
-        self.tools = tools
-        self.max_trials = max_trials
-        self.memory = []  # 存储反思经验
-        
-    def run(self, task: str, ground_truth: str = None) -> str:
-        """执行 Reflexion 循环"""
-        
-        for trial in range(self.max_trials):
-            # 1. Actor: 执行任务
-            result = self._act(task)
-            
-            # 2. Evaluator: 评估结果
-            is_success, feedback = self._evaluate(result, ground_truth)
-            
-            if is_success:
-                return result
-            
-            # 3. Self-Reflection: 反思并记忆
-            reflection = self._reflect(task, result, feedback)
-            self.memory.append({
-                "trial": trial + 1,
-                "result": result,
-                "feedback": feedback,
-                "reflection": reflection
-            })
-        
-        return f"尝试 {self.max_trials} 次后仍未成功"
-    
-    def _act(self, task: str) -> str:
-        """执行任务"""
-        # 构建包含历史反思的提示
-        memory_text = self._format_memory()
-        
-        prompt = f"""
-任务：{task}
+**执行阶段**：
+- Actor 根据当前策略执行任务
+- 记录执行过程和中间结果
+- 生成可解释的推理轨迹
 
-历史经验：
-{memory_text if memory_text else "无"}
+**评估阶段**：
+- Evaluator 分析执行结果
+- 对比期望输出和实际输出
+- 判断任务完成质量
 
-请完成任务并给出答案：
-"""
-        return self.llm.generate(prompt)
-    
-    def _evaluate(self, result: str, ground_truth: str) -> tuple:
-        """评估结果"""
-        if ground_truth:
-            # 有标准答案时直接比较
-            is_success = self._compare(result, ground_truth)
-            feedback = "正确" if is_success else f"期望答案：{ground_truth}"
-        else:
-            # 使用 LLM 评估
-            is_success, feedback = self._llm_evaluate(result)
-        
-        return is_success, feedback
-    
-    def _reflect(self, task: str, result: str, feedback: str) -> str:
-        """生成反思"""
-        prompt = f"""
-任务：{task}
-我的回答：{result}
-评估反馈：{feedback}
-
-请分析失败原因并总结经验教训：
-1. 哪里出错了？
-2. 应该如何改进？
-3. 下次应该注意什么？
-
-反思总结：
-"""
-        return self.llm.generate(prompt)
-    
-    def _format_memory(self) -> str:
-        """格式化记忆"""
-        if not self.memory:
-            return ""
-        
-        texts = []
-        for m in self.memory:
-            texts.append(f"""
-尝试 {m['trial']}:
-- 结果：{m['result'][:100]}...
-- 反馈：{m['feedback']}
-- 反思：{m['reflection']}
-""")
-        return "\n".join(texts)
-    
-    def _compare(self, result: str, ground_truth: str) -> bool:
-        """比较答案"""
-        # 简化比较，实际应用中可能更复杂
-        return ground_truth.lower() in result.lower()
-    
-    def _llm_evaluate(self, result: str) -> tuple:
-        """使用 LLM 评估"""
-        prompt = f"""
-评估以下回答的质量：
-{result}
-
-请判断回答是否合理完整，输出格式：
-成功：是/否
-反馈：评价说明
-"""
-        response = self.llm.generate(prompt)
-        # 解析响应...
-        return False, "需要改进"
-```
+**反思阶段**：
+- 反思模块分析失败原因
+- 识别需要改进的关键点
+- 生成具体的改进建议
 
 ### 3.4 Reflexion 示例
 
@@ -405,7 +222,19 @@ def is_palindrome(s):
 评估：成功
 ```
 
-### 3.5 Reflexion 的应用场景
+### 3.5 Reflexion 2025年增强
+
+**元学习能力**：
+- Agent 通过多次任务迭代持续改进
+- 学习通用的问题解决策略
+- 跨任务知识迁移
+
+**自动错误恢复**：
+- 通过强化学习实现自动纠错
+- 实时监控执行过程
+- 预防性错误检测
+
+### 3.6 Reflexion 的应用场景
 
 | 场景 | 说明 |
 |------|------|
@@ -467,144 +296,14 @@ graph LR
 2. **State Evaluator**：评估每个思路的质量/潜力
 3. **Search Algorithm**：决定探索顺序（BFS/DFS）
 
-### 4.4 ToT 实现
+### 4.4 ToT-X (2025年发展)
 
-```python
-from typing import List, Tuple
-import heapq
+**ToT-X** 是 Tree of Thought 的 2025 年增强版本，主要特性：
 
-class TreeOfThought:
-    def __init__(self, llm, max_depth: int = 5, beam_width: int = 3):
-        self.llm = llm
-        self.max_depth = max_depth
-        self.beam_width = beam_width  # 每层保留的节点数
-        
-    def solve(self, problem: str) -> str:
-        """使用 ToT 解决问题"""
-        # 初始状态
-        initial_state = {
-            "problem": problem,
-            "thoughts": [],
-            "depth": 0
-        }
-        
-        # BFS 搜索
-        return self._bfs_search(initial_state)
-    
-    def _bfs_search(self, initial_state: dict) -> str:
-        """广度优先搜索"""
-        queue = [(0, initial_state)]  # (负分数, 状态)
-        
-        while queue:
-            _, current_state = heapq.heappop(queue)
-            
-            # 检查是否达到终止条件
-            if self._is_terminal(current_state):
-                return self._format_solution(current_state)
-            
-            # 检查深度限制
-            if current_state["depth"] >= self.max_depth:
-                continue
-            
-            # 生成子节点
-            children = self._generate_thoughts(current_state)
-            
-            # 评估并选择最优的 beam_width 个
-            scored_children = []
-            for child in children:
-                score = self._evaluate_state(child)
-                scored_children.append((score, child))
-            
-            # 保留得分最高的节点
-            scored_children.sort(key=lambda x: x[0], reverse=True)
-            for score, child in scored_children[:self.beam_width]:
-                heapq.heappush(queue, (-score, child))
-        
-        return "未找到解决方案"
-    
-    def _generate_thoughts(self, state: dict) -> List[dict]:
-        """生成可能的思路"""
-        prompt = f"""
-问题：{state['problem']}
-当前推理过程：
-{self._format_thoughts(state['thoughts'])}
-
-请生成 3 个不同的下一步思路：
-1. 
-2. 
-3. 
-"""
-        response = self.llm.generate(prompt)
-        thoughts = self._parse_thoughts(response)
-        
-        children = []
-        for thought in thoughts:
-            child_state = {
-                "problem": state["problem"],
-                "thoughts": state["thoughts"] + [thought],
-                "depth": state["depth"] + 1
-            }
-            children.append(child_state)
-        
-        return children
-    
-    def _evaluate_state(self, state: dict) -> float:
-        """评估状态的质量"""
-        prompt = f"""
-问题：{state['problem']}
-推理过程：
-{self._format_thoughts(state['thoughts'])}
-
-请评估这个推理过程的质量（0-10分）：
-- 逻辑是否正确？
-- 是否朝着解决方案前进？
-- 是否遗漏重要信息？
-
-评分：
-"""
-        response = self.llm.generate(prompt)
-        try:
-            score = float(response.strip().split()[0])
-            return score / 10.0
-        except:
-            return 0.5
-    
-    def _is_terminal(self, state: dict) -> bool:
-        """判断是否到达终止状态"""
-        if not state["thoughts"]:
-            return False
-        
-        last_thought = state["thoughts"][-1]
-        # 检查是否包含最终答案
-        return "最终答案" in last_thought or "答案是" in last_thought
-    
-    def _format_thoughts(self, thoughts: List[str]) -> str:
-        """格式化思路列表"""
-        if not thoughts:
-            return "（暂无）"
-        return "\n".join([f"{i+1}. {t}" for i, t in enumerate(thoughts)])
-    
-    def _format_solution(self, state: dict) -> str:
-        """格式化最终解决方案"""
-        return "\n".join([
-            "推理过程：",
-            self._format_thoughts(state["thoughts"]),
-            "",
-            f"答案：{state['thoughts'][-1]}"
-        ])
-    
-    def _parse_thoughts(self, response: str) -> List[str]:
-        """解析生成的思路"""
-        thoughts = []
-        for line in response.split("\n"):
-            line = line.strip()
-            if line and line[0].isdigit():
-                # 移除数字前缀
-                thought = line.split(".", 1)[-1].strip()
-                if thought:
-                    thoughts.append(thought)
-        return thoughts[:3]  # 最多返回3个
-```
+- **并行推理分支**：同时探索多个推理路径，提高决策速度
+- **多智能体集成**：与多智能体系统结合，实现分布式问题解决
+- **自适应剪枝**：基于实时评估动态调整搜索策略
+- **层次化推理**：支持多层级的树状推理结构
 
 ### 4.5 ToT 示例：24点游戏
 
@@ -679,89 +378,34 @@ graph TB
     Tester --> |成功| Done[完成]
 ```
 
-```python
-class MultiAgentSystem:
-    def __init__(self, agents: dict):
-        self.agents = agents
-        self.message_bus = []
-        
-    def run(self, task: str) -> str:
-        """运行多 Agent 协作"""
-        # 1. 规划 Agent 分解任务
-        subtasks = self.agents["planner"].plan(task)
-        
-        for subtask in subtasks:
-            # 2. 编码 Agent 实现
-            code = self.agents["coder"].implement(subtask)
-            
-            # 3. 审查 Agent 审核
-            review = self.agents["reviewer"].review(code)
-            
-            while not review["approved"]:
-                # 根据反馈修改
-                code = self.agents["coder"].revise(code, review["feedback"])
-                review = self.agents["reviewer"].review(code)
-            
-            # 4. 测试 Agent 验证
-            test_result = self.agents["tester"].test(code)
-            
-            if not test_result["passed"]:
-                # 返回修复
-                code = self.agents["coder"].fix(code, test_result["errors"])
-        
-        return self._aggregate_results()
-```
+**协作模式**：
+
+1. **串行协作**：Agent 按顺序执行，前一个输出作为下一个输入
+2. **并行协作**：多个 Agent 同时工作，最后汇总结果
+3. **层次协作**：主 Agent 协调多个子 Agent 的工作
+4. **竞争协作**：多个 Agent 提出方案，选择最优结果
 
 ### 5.2 工具增强 Agent
 
-```python
-class ToolAugmentedAgent:
-    def __init__(self, llm):
-        self.llm = llm
-        self.tools = {}
-        
-    def register_tool(self, name: str, func: callable, schema: dict):
-        """注册工具"""
-        self.tools[name] = {
-            "function": func,
-            "schema": schema
-        }
-    
-    def run(self, query: str) -> str:
-        """执行查询"""
-        # 决定是否需要工具
-        tool_decision = self._decide_tool(query)
-        
-        if tool_decision["use_tool"]:
-            # 调用工具
-            tool_name = tool_decision["tool"]
-            tool_input = tool_decision["input"]
-            
-            result = self.tools[tool_name]["function"](**tool_input)
-            
-            # 基于结果生成回答
-            return self._generate_with_context(query, result)
-        else:
-            # 直接回答
-            return self.llm.generate(query)
-    
-    def _decide_tool(self, query: str) -> dict:
-        """决定使用哪个工具"""
-        tools_desc = self._format_tools()
-        
-        prompt = f"""
-用户查询：{query}
+工具是 Agent 扩展能力的关键。2025年的工具集成发展趋势：
 
-可用工具：
-{tools_desc}
+**标准化工具接口**：
+- 统一的工具调用协议
+- 标准化的参数和返回格式
+- 自动工具发现和注册
+- 工具权限和安全控制
 
-请决定是否需要使用工具：
-- 如需使用，输出工具名称和输入参数
-- 如不需要，输出 "不使用工具"
-"""
-        response = self.llm.generate(prompt)
-        return self._parse_tool_decision(response)
-```
+**智能工具选择**：
+- 基于任务需求的工具推荐
+- 工具组合优化
+- 动态工具切换
+- 工具使用效果评估
+
+**工具链构建**：
+- 多工具协同工作流
+- 工具间数据传递优化
+- 错误传播和恢复
+- 工具执行监控
 
 ### 5.3 记忆增强 Agent
 
@@ -782,58 +426,70 @@ graph TB
     Agent --> |存储重要信息| LTM
 ```
 
-```python
-class MemoryAugmentedAgent:
-    def __init__(self, llm, vector_store):
-        self.llm = llm
-        self.vector_store = vector_store
-        self.short_term = []  # 最近 k 轮对话
-        
-    def process(self, query: str) -> str:
-        """处理查询"""
-        # 1. 检索相关记忆
-        relevant_memories = self.vector_store.search(query, k=5)
-        
-        # 2. 构建工作记忆
-        working_memory = self._build_working_memory(
-            query, 
-            relevant_memories, 
-            self.short_term[-5:]
-        )
-        
-        # 3. 生成回答
-        response = self.llm.generate(working_memory)
-        
-        # 4. 更新记忆
-        self._update_memory(query, response)
-        
-        return response
-    
-    def _build_working_memory(self, query, memories, recent):
-        """构建工作记忆"""
-        return f"""
-相关历史信息：
-{self._format_memories(memories)}
+**记忆层次设计**：
 
-最近对话：
-{self._format_recent(recent)}
+1. **工作记忆**：当前任务的上下文信息
+2. **短期记忆**：最近的交互历史
+3. **长期记忆**：持久化的重要知识
+4. **情景记忆**：特定场景的经验
 
-当前问题：{query}
-"""
-    
-    def _update_memory(self, query: str, response: str):
-        """更新记忆系统"""
-        # 更新短期记忆
-        self.short_term.append({"query": query, "response": response})
-        
-        # 判断是否值得存入长期记忆
-        if self._is_important(query, response):
-            self.vector_store.add(f"Q: {query}\nA: {response}")
-```
+**记忆管理策略**：
 
-## 6. Agent 实践指南
+- **重要性过滤**：自动识别值得长期存储的信息
+- **遗忘机制**：定期清理过时和低价值信息
+- **关联检索**：基于语义相似度的智能检索
+- **记忆融合**：多源记忆信息的整合
 
-### 6.1 选择合适的框架
+## 6. 2025年 Agent 框架发展
+
+### 6.1 LangChain 2025
+
+**新特性**：
+- **多模态 Agent 支持**：文本、图像、音频的统一处理
+- **增强的记忆管理**：长期上下文保持能力
+- **动态工具选择**：更自主的工具使用行为
+- **多智能体编排**：协作问题解决能力
+
+**架构改进**：
+- 模块化组件设计
+- 更好的可扩展性
+- 企业级部署支持
+- 丰富的预构建 Agent 模板
+
+### 6.2 AutoGen 2.0
+
+**重大更新**：
+- **分层智能体委托**：动态创建专门子智能体
+- **改进的人机协作**：实时反馈循环
+- **企业工作流优化**：自动化调试和代码生成
+- **更好的可观测性**：详细的执行追踪
+
+**新能力**：
+- 跨平台智能体通信
+- 智能体角色自学习
+- 动态工作流调整
+- 分布式任务执行
+
+### 6.3 其他框架进展
+
+**CrewAI**：
+- 专门的多智能体协作框架
+- 角色定义和任务分配
+- 协作流程可视化
+
+**MetaGPT**：
+- 软件开发专用的多智能体系统
+- 模拟真实软件开发团队
+- 自动化代码生成和测试
+
+**LlamaIndex Agents**：
+- 基于 RAG 的智能体框架
+- 强大的知识检索能力
+- 细粒度的工具集成
+
+## 7. Agent 实践指南
+
+### 7.1 选择合适的框架
 
 ```mermaid
 flowchart TD
@@ -848,7 +504,7 @@ flowchart TD
     Q4 --> |否| CoT[Chain of Thought]
 ```
 
-### 6.2 常见陷阱与解决方案
+### 7.2 常见陷阱与解决方案
 
 | 陷阱 | 表现 | 解决方案 |
 |------|------|----------|
@@ -858,42 +514,103 @@ flowchart TD
 | 上下文丢失 | 忘记之前的信息 | 实现记忆系统 |
 | 规划失败 | 任务分解不合理 | 迭代规划，允许调整 |
 
-### 6.3 评估 Agent 性能
+### 7.3 Agent 设计原则
 
-```python
-class AgentEvaluator:
-    def evaluate(self, agent, test_cases: list) -> dict:
-        """评估 Agent 性能"""
-        results = {
-            "success_rate": 0,
-            "avg_steps": 0,
-            "avg_tokens": 0,
-            "error_types": {}
-        }
-        
-        for case in test_cases:
-            result = agent.run(case["input"])
-            
-            # 检查正确性
-            is_correct = self._check_answer(result, case["expected"])
-            
-            # 记录统计
-            if is_correct:
-                results["success_rate"] += 1
-            
-            results["avg_steps"] += agent.step_count
-            results["avg_tokens"] += agent.token_count
-        
-        # 计算平均值
-        n = len(test_cases)
-        results["success_rate"] /= n
-        results["avg_steps"] /= n
-        results["avg_tokens"] /= n
-        
-        return results
-```
+**模块化设计**：
+- 功能组件解耦
+- 可插拔的工具接口
+- 标准化的消息格式
+- 灵活的配置管理
 
-## 7. 本章小结
+**可观测性**：
+- 详细的执行日志
+- 性能指标监控
+- 错误追踪和分析
+- 用户行为分析
+
+**安全性**：
+- 输入验证和过滤
+- 工具权限控制
+- 敏感信息保护
+- 审计和合规
+
+**可扩展性**：
+- 水平扩展支持
+- 负载均衡机制
+- 资源优化管理
+- 弹性伸缩能力
+
+### 7.4 评估 Agent 性能
+
+**任务完成度**：
+- 目标达成率
+- 结果质量评估
+- 用户满意度
+- 效率指标
+
+**智能行为评估**：
+- 推理逻辑性
+- 工具使用效率
+- 错误恢复能力
+- 学习适应能力
+
+**系统性能**：
+- 响应延迟
+- 资源消耗
+- 并发处理能力
+- 稳定性和可靠性
+
+## 8. Agent 应用场景
+
+### 8.1 企业应用
+
+**客服智能体**：
+- 多轮对话处理
+- 知识库检索
+- 工单自动分类
+- 情感分析和响应
+
+**代码助手**：
+- 代码生成和补全
+- 自动化测试
+- 代码审查
+- 技术文档生成
+
+**数据分析智能体**：
+- 数据查询和分析
+- 报告自动生成
+- 异常检测
+- 预测建模
+
+### 8.2 研究应用
+
+**科学发现智能体**：
+- 文献检索和分析
+- 假设生成和验证
+- 实验设计
+- 结果解释
+
+**医疗诊断智能体**：
+- 症状分析
+- 诊断建议
+- 治疗方案推荐
+- 医学知识检索
+
+### 8.3 创意应用
+
+**内容创作智能体**：
+- 文章写作
+- 代码创作
+- 艺术设计
+- 音乐创作
+
+**游戏智能体**：
+- NPC 对话
+- 任务生成
+- 关卡设计
+- 玩家行为分析
+
+## 9. 本章小结
 
 ```mermaid
 mindmap
@@ -914,6 +631,11 @@ mindmap
             多路径探索
             状态评估
             搜索算法
+        2025框架发展
+            LangChain
+            AutoGen 2.0
+            ToT-X
+            ReAct++
         高级架构
             多Agent协作
             工具增强
@@ -923,9 +645,11 @@ mindmap
 **核心要点**：
 - Agent 是以 LLM 为核心的自主系统，具备推理、规划、行动和记忆能力
 - ReAct 将推理和行动交织，适合需要工具调用的任务
-- Reflexion 通过自我反思实现迭代改进
-- Tree of Thought 探索多条推理路径，适合复杂决策问题
-- 实际应用中常需要组合多种技术，并配合记忆系统
+- Reflexion 通过自我反思实现迭代改进，2025年增加了元学习能力
+- Tree of Thought 探索多条推理路径，ToT-X 支持并行和分布式推理
+- 2025年主流框架（LangChain、AutoGen 2.0）显著增强了多智能体协作能力
+- 实际应用中常需要组合多种技术，并配合记忆系统和工具集成
+- Agent 设计需要考虑模块化、可观测性、安全性和可扩展性
 
 ## 思考题
 
@@ -939,6 +663,7 @@ mindmap
 - [Reflexion: Language Agents with Verbal Reinforcement Learning](https://arxiv.org/abs/2303.11366)
 - [Tree of Thoughts: Deliberate Problem Solving with Large Language Models](https://arxiv.org/abs/2305.10601)
 - [LangChain Agents Documentation](https://python.langchain.com/docs/modules/agents/)
+- [AutoGen: Multi-Agent Conversation Framework](https://github.com/microsoft/autogen)
 
 ---
 
