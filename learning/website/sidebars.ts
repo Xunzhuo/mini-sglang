@@ -5,11 +5,11 @@ const sidebars: SidebarsConfig = {
     {
       type: 'doc',
       id: 'intro',
-      label: '📚 教程总览',
+      label: '教程总览',
     },
     {
       type: 'category',
-      label: '🎓 学习资源',
+      label: '学习资源',
       collapsed: false,
       items: [
         {
@@ -31,7 +31,7 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: '🧠 基础知识',
+      label: '基础知识',
       collapsed: false,
       items: [
         {
@@ -198,7 +198,7 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: '📖 SGLang 推理实战',
+      label: 'SGLang 推理实战',
       collapsed: false,
       items: [
         {

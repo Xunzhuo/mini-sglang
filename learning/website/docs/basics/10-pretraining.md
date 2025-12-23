@@ -20,9 +20,9 @@ graph LR
 ```
 
 预训练后的模型称为**基座模型 (Base Model)**，具备：
-- 📚 语法和语义理解能力
-- 🌍 世界知识（从训练数据中学到）
-- 🧠 推理能力的雏形
+- 语法和语义理解能力
+- 世界知识（从训练数据中学到）
+- 推理能力的雏形
 
 ## 2. LLM 训练全流程
 
@@ -43,8 +43,8 @@ graph LR
 | 阶段 | 目标 | 数据量 | 成本占比 |
 |------|------|--------|----------|
 | **预训练** | 学习语言和知识 | 数万亿 tokens | 90%+ |
-| **SFT** | 学习对话格式 | 数万条 | ~5% |
-| **RLHF** | 对齐人类偏好 | 数万条 | ~5% |
+| **SFT** | 学习对话格式 | 数万条 | 约 5% |
+| **RLHF** | 对齐人类偏好 | 数万条 | 约 5% |
 
 ## 3. 预训练目标
 
@@ -62,20 +62,13 @@ graph LR
     end
 ```
 
-```python
-# CLM 训练
-输入: "今天天气"
-目标: "天", "天", "气", "真", "好", "！"
-
-# 损失函数：负对数似然
-损失 = -Σ log P(x_t | x_1, ..., x_{t-1})
-```
+**训练方式**：给定输入序列"今天天气"，模型需要依次预测"天"、"天"、"气"、"真"、"好"、"！"。损失函数是所有位置的负对数似然之和。
 
 **特点**：
-- ✅ 单向注意力（只能看到前文）
-- ✅ 天然适合文本生成
-- ✅ 训练效率高（每个 token 都贡献损失）
-- ✅ 现代 LLM 的主流选择
+- 单向注意力（只能看到前文）
+- 天然适合文本生成
+- 训练效率高（每个 token 都贡献损失）
+- 现代 LLM 的主流选择
 
 ### 3.2 Masked Language Modeling (MLM)
 
@@ -90,18 +83,13 @@ graph LR
 ```
 
 **特点**：
-- ✅ 双向注意力，理解更充分
-- ❌ 只有 15% 的 token 贡献损失
-- ❌ 不适合生成任务
+- 双向注意力，理解更充分
+- 只有 15% 的 token 贡献损失（效率较低）
+- 不适合生成任务
 
 ### 3.3 Span Corruption
 
-**T5 采用的方法**：预测被遮盖的连续片段。
-
-```
-输入: "今天<X>真好"
-目标: "<X>天气<Y>"
-```
+**T5 采用的方法**：预测被遮盖的连续片段。例如，输入"今天 \<X\> 真好"，模型需要输出"\<X\> 天气 \<Y\>"。
 
 ## 4. 预训练数据
 
@@ -143,12 +131,12 @@ graph TB
 **关键处理步骤**：
 
 1. **去重 (Deduplication)**
-   - 文档级去重：MinHash + LSH
+   - 文档级去重：MinHash + LSH 算法
    - 句子级去重：精确匹配或近似匹配
    - 为什么重要：重复数据会导致模型记忆而非泛化
 
 2. **质量过滤**
-   - 基于规则：长度、特殊字符比例
+   - 基于规则：长度、特殊字符比例等
    - 基于模型：训练分类器判断质量
    - 基于困惑度：用小模型过滤低质量文本
 
@@ -172,17 +160,7 @@ pie title LLaMA 数据配比
     "StackExchange" : 2
 ```
 
-```python
-# 典型的数据配比
-data_mix = {
-    "web": 0.67,        # 网页：通用语言能力
-    "code": 0.045,      # 代码：推理能力
-    "books": 0.045,     # 书籍：长文本理解
-    "wiki": 0.045,      # 百科：事实知识
-    "papers": 0.025,    # 论文：专业知识
-    "qa": 0.02,         # 问答：交互能力
-}
-```
+典型的数据配比为：网页约 67%（提供通用语言能力），代码约 4.5%（提供推理能力），书籍约 4.5%（提供长文本理解），百科约 4.5%（提供事实知识），论文约 2.5%（提供专业知识），问答约 2%（提供交互能力）。
 
 ## 5. Scaling Law
 
@@ -199,16 +177,7 @@ graph LR
     end
 ```
 
-**OpenAI Scaling Law**：
-```
-L(N, D, C) ≈ (N_c/N)^α + (D_c/D)^β + L_∞
-
-其中:
-- N: 模型参数量
-- D: 数据量 (tokens)
-- C: 计算量 (FLOPs)
-- α ≈ 0.076, β ≈ 0.095
-```
+**OpenAI Scaling Law** 发现，损失可以用参数量、数据量和计算量的幂律函数来近似。关键参数包括模型参数量 N、训练数据量 D（以 token 数计）和计算量 C（以 FLOPs 计）。
 
 ### 5.2 关键发现
 
@@ -228,33 +197,16 @@ Google DeepMind 的更新研究颠覆了之前的认知：
 | 观点 | 之前 | Chinchilla |
 |------|------|------------|
 | 重点 | 模型大小更重要 | 模型和数据同等重要 |
-| 配比 | 偏向大模型 | N ∝ D |
+| 配比 | 偏向大模型 | 参数量正比于数据量 |
 | 结论 | - | 很多大模型训练不充分 |
 
-**Chinchilla 最优配比**：
-```
-参数量 N ∝ 训练 Token 数 D
-
-例如:
-- 70B 参数 → 约 1.4T tokens
-- 7B 参数 → 约 140B tokens
-```
+**Chinchilla 最优配比**：参数量与训练 Token 数应该成正比。例如，70B 参数的模型应该训练约 1.4T tokens，7B 参数的模型应该训练约 140B tokens。
 
 ## 6. 预训练技术细节
 
 ### 6.1 优化器
 
-**AdamW** 是标准选择：
-
-```python
-optimizer = torch.optim.AdamW(
-    model.parameters(),
-    lr=3e-4,           # 峰值学习率
-    betas=(0.9, 0.95), # 动量参数
-    weight_decay=0.1,  # 权重衰减
-    eps=1e-8
-)
-```
+**AdamW** 是标准选择。主要配置包括：峰值学习率约 3e-4，动量参数 beta1=0.9、beta2=0.95，权重衰减 0.1。
 
 ### 6.2 学习率调度
 
@@ -269,45 +221,15 @@ graph LR
     end
 ```
 
-```python
-def cosine_schedule(step, total_steps, warmup_steps, max_lr, min_lr):
-    """Cosine learning rate schedule with warmup"""
-    if step < warmup_steps:
-        # Warmup: 线性增长
-        return max_lr * step / warmup_steps
-    else:
-        # Cosine decay: 余弦衰减
-        progress = (step - warmup_steps) / (total_steps - warmup_steps)
-        return min_lr + 0.5 * (max_lr - min_lr) * (1 + math.cos(math.pi * progress))
-
-# 典型配置
-warmup_steps = 2000
-total_steps = 100000
-max_lr = 3e-4
-min_lr = 3e-5  # 通常是 max_lr 的 1/10
-```
+**调度过程**：
+1. **Warmup 阶段**：学习率从 0 线性增长到峰值，通常约 2000 步
+2. **峰值阶段**：达到最大学习率（如 3e-4）
+3. **余弦衰减**：按余弦曲线从峰值逐渐降低到最小值
+4. **最小学习率**：通常是峰值的 1/10（如 3e-5）
 
 ### 6.3 混合精度训练
 
-使用 BF16/FP16 加速训练：
-
-```python
-# PyTorch AMP (Automatic Mixed Precision)
-scaler = torch.cuda.amp.GradScaler()
-
-for batch in dataloader:
-    optimizer.zero_grad()
-    
-    # 前向传播使用低精度
-    with torch.cuda.amp.autocast(dtype=torch.bfloat16):
-        outputs = model(batch)
-        loss = criterion(outputs, targets)
-    
-    # 反向传播和优化
-    scaler.scale(loss).backward()
-    scaler.step(optimizer)
-    scaler.update()
-```
+使用 BF16 或 FP16 加速训练，减少显存占用和计算时间。
 
 **为什么用 BF16 而非 FP16**？
 - BF16：指数位多，数值范围大，不易溢出
@@ -315,42 +237,15 @@ for batch in dataloader:
 
 ### 6.4 梯度裁剪
 
-防止梯度爆炸：
-
-```python
-# 梯度裁剪
-torch.nn.utils.clip_grad_norm_(
-    model.parameters(), 
-    max_norm=1.0
-)
-```
+防止梯度爆炸，通常将梯度范数裁剪到 1.0。
 
 ### 6.5 训练配置示例
 
-```python
-# LLaMA-7B 典型训练配置
-config = {
-    # 模型
-    "hidden_size": 4096,
-    "num_layers": 32,
-    "num_heads": 32,
-    "vocab_size": 32000,
-    
-    # 训练
-    "batch_size": 4M tokens,  # 全局批次
-    "seq_length": 2048,
-    "total_tokens": 1T,       # 总训练量
-    
-    # 优化
-    "optimizer": "AdamW",
-    "lr": 3e-4,
-    "warmup_tokens": 2B,
-    "weight_decay": 0.1,
-    
-    # 精度
-    "precision": "bf16",
-}
-```
+以 LLaMA-7B 为例，典型配置包括：
+- **模型**：隐藏维度 4096，32 层，32 个注意力头，词表大小 32000
+- **训练**：全局批次约 400 万 tokens，序列长度 2048，总训练量约 1T tokens
+- **优化**：AdamW 优化器，学习率 3e-4，权重衰减 0.1，约 2B tokens 的 warmup
+- **精度**：BF16 混合精度
 
 ## 7. 训练稳定性
 
@@ -368,46 +263,26 @@ graph TB
 
 ### 7.2 监控指标
 
-```python
-# 关键监控项
-metrics = {
-    "loss": training_loss,           # 训练损失
-    "val_loss": validation_loss,     # 验证损失
-    "grad_norm": gradient_norm,      # 梯度范数
-    "lr": current_learning_rate,     # 学习率
-    "throughput": tokens_per_second, # 吞吐量
-    "gpu_memory": memory_allocated,  # 显存使用
-    "gpu_util": gpu_utilization,     # GPU 利用率
-}
+关键监控项包括：训练损失、验证损失、梯度范数、当前学习率、吞吐量（每秒处理的 token 数）、显存使用、GPU 利用率等。
 
-# 告警条件
-if grad_norm > 10:
-    alert("梯度范数异常")
-if loss > loss_history[-100].mean() * 2:
-    alert("Loss Spike")
-```
+典型的告警条件：
+- 梯度范数超过 10 时告警
+- Loss 比近期均值高 2 倍以上时告警（可能是 Loss Spike）
 
 ## 8. 预训练的计算成本
 
 ### 8.1 FLOPs 估算
 
-```
-训练 FLOPs ≈ 6 × N × D
-
-其中:
-- N: 模型参数量
-- D: 训练 token 数
-- 6: 前向 (2N) + 反向 (4N) 的系数
-```
+训练所需的 FLOPs 约等于 6 倍参数量乘以训练 token 数。其中 6 的系数来源于前向传播（2N）和反向传播（4N）的计算量。
 
 ### 8.2 成本估算
 
 | 模型 | 参数量 | Token 数 | GPU 小时 | 估算成本 |
 |------|--------|----------|----------|----------|
-| LLaMA-7B | 7B | 1T | ~80K | ~$200K |
-| LLaMA-70B | 70B | 2T | ~1.7M | ~$4M |
-| GPT-3 | 175B | 300B | ~3M | ~$5M |
-| GPT-4 | ~1.8T? | ? | ? | ~$100M? |
+| LLaMA-7B | 7B | 1T | 约 8 万 | 约 20 万美元 |
+| LLaMA-70B | 70B | 2T | 约 170 万 | 约 400 万美元 |
+| GPT-3 | 175B | 300B | 约 300 万 | 约 500 万美元 |
+| GPT-4 | 约 1.8T? | ? | ? | 约 1 亿美元? |
 
 ### 8.3 资源需求
 
@@ -436,7 +311,7 @@ graph TB
 
 ### 9.2 训练效率
 
-- **更长上下文**：从 2K → 128K tokens
+- **更长上下文**：从 2K 扩展到 128K tokens
 - **更高效架构**：MoE、线性注意力
 - **更好并行策略**：3D 并行、序列并行
 
@@ -464,18 +339,18 @@ mindmap
 ```
 
 **核心要点**：
-- ✅ 预训练通过自监督学习让模型学习语言
-- ✅ CLM（预测下一个词）是主流预训练目标
-- ✅ 数据质量和规模同样重要
-- ✅ Scaling Law 指导模型和数据的配比
-- ✅ 训练稳定性需要精心设计和监控
+- 预训练通过自监督学习让模型学习语言
+- CLM（预测下一个词）是主流预训练目标
+- 数据质量和规模同样重要
+- Scaling Law 指导模型和数据的配比
+- 训练稳定性需要精心设计和监控
 
 ## 延伸阅读
 
-- 📄 [Language Models are Few-Shot Learners (GPT-3)](https://arxiv.org/abs/2005.14165)
-- 📄 [Training Compute-Optimal Large Language Models (Chinchilla)](https://arxiv.org/abs/2203.15556)
-- 📄 [LLaMA: Open and Efficient Foundation Language Models](https://arxiv.org/abs/2302.13971)
-- 📄 [Scaling Laws for Neural Language Models](https://arxiv.org/abs/2001.08361)
+- [Language Models are Few-Shot Learners (GPT-3)](https://arxiv.org/abs/2005.14165)
+- [Training Compute-Optimal Large Language Models (Chinchilla)](https://arxiv.org/abs/2203.15556)
+- [LLaMA: Open and Efficient Foundation Language Models](https://arxiv.org/abs/2302.13971)
+- [Scaling Laws for Neural Language Models](https://arxiv.org/abs/2001.08361)
 
 ---
 

@@ -21,12 +21,7 @@ graph LR
 2. **建立映射**：每个 token 对应一个唯一 ID
 3. **构建词表**：所有可能 token 的集合 (vocabulary)
 
-```python
-# 示例
-text = "Hello, world!"
-tokens = ["Hello", ",", " world", "!"]  # 切分
-token_ids = [15496, 11, 995, 0]          # 映射为ID
-```
+以 "Hello, world!" 为例，分词器会将其切分为 "Hello"、","、" world"、"!" 四个 token，然后分别映射为 15496、11、995、0 这样的数字 ID。
 
 ## 2. 分词粒度的选择
 
@@ -47,40 +42,33 @@ graph TB
 
 ### 2.1 字符级 (Character-level)
 
-```
-"Hello" → ['H', 'e', 'l', 'l', 'o']
-```
+将文本按单个字符切分，如 "Hello" 变成 H、e、l、l、o 五个 token。
 
 | 优点 | 缺点 |
 |------|------|
-| ✅ 词表小（几百个字符） | ❌ 序列过长 |
-| ✅ 无 OOV 问题 | ❌ 难以捕捉语义 |
-| ✅ 对错别字鲁棒 | ❌ 计算成本高 |
+| 词表小（几百个字符） | 序列过长 |
+| 无 OOV（未登录词）问题 | 难以捕捉语义 |
+| 对错别字鲁棒 | 计算成本高 |
 
 ### 2.2 词级 (Word-level)
 
-```
-"Hello world" → ['Hello', 'world']
-```
+按完整单词切分，如 "Hello world" 变成 Hello、world 两个 token。
 
 | 优点 | 缺点 |
 |------|------|
-| ✅ 语义清晰 | ❌ 词表巨大（几十万词） |
-| ✅ 序列短 | ❌ 无法处理新词 (OOV) |
-| | ❌ 无法学习词根词缀 |
+| 语义清晰 | 词表巨大（几十万词） |
+| 序列短 | 无法处理新词 (OOV) |
+| | 无法学习词根词缀 |
 
-### 2.3 子词级 (Subword-level) ⭐️ 现代主流
+### 2.3 子词级 (Subword-level) - 现代主流
 
-```
-"unhappiness" → ['un', 'happiness']
-"playing" → ['play', 'ing']
-```
+将词切分为有意义的子单元，如 "unhappiness" 变成 un、happiness 两个 token，"playing" 变成 play、ing。
 
 | 优点 | 缺点 |
 |------|------|
-| ✅ 平衡词表大小和序列长度 | ❌ 切分方式需要学习 |
-| ✅ 能处理未见过的词 | |
-| ✅ 捕捉词根、词缀等规律 | |
+| 平衡词表大小和序列长度 | 切分方式需要学习 |
+| 能处理未见过的词 | |
+| 捕捉词根、词缀等规律 | |
 
 ## 3. 主流分词算法
 
@@ -89,10 +77,12 @@ graph TB
     T[子词分词算法] --> BPE[BPE<br/>字节对编码]
     T --> WP[WordPiece<br/>词片]
     T --> UG[Unigram<br/>一元模型]
+    T --> BBPE[Byte-Level BPE<br/>字节级BPE]
     
-    BPE --> GPT[GPT系列<br/>LLaMA<br/>Mistral]
+    BPE --> GPT[GPT-2/3<br/>LLaMA]
+    BBPE --> GPT4[GPT-4<br/>Qwen]
     WP --> BERT[BERT<br/>DistilBERT]
-    UG --> T5[T5<br/>ALBERT<br/>XLNet]
+    UG --> T5[T5<br/>ALBERT]
 ```
 
 ### 3.1 BPE (Byte Pair Encoding)
@@ -112,61 +102,38 @@ graph TB
 
 **训练示例**：
 
-```
-语料: "low lower lowest"
+假设语料是 "low lower lowest"：
 
-初始: ['l', 'o', 'w', 'e', 'r', 's', 't', ' ']
+1. **初始化**：词表只包含所有单字符 l、o、w、e、r、s、t 和空格
+2. **统计频率**：找出最常见的相邻字符对，发现 l-o 出现 3 次最多
+3. **第一次合并**：将 l 和 o 合并为新 token "lo"
+4. **继续统计**：发现 lo-w 最频繁，合并为 "low"
+5. **重复**：直到词表达到目标大小
 
-统计 pair 频率:
-('l', 'o'): 3次, ('o', 'w'): 3次, ('w', 'e'): 2次, ...
+**分词时**：按照学习到的合并规则进行切分。比如 "lowest" 会被切分为 low 和 est，"slower" 会被切分为 s、low 和 er。
 
-Step 1: 合并 ('l', 'o') → 'lo'
-词表: ['lo', 'w', 'e', 'r', 's', 't', ' ']
+**使用 BPE 的模型**：GPT-2、GPT-3、LLaMA、Mistral
 
-Step 2: 合并 ('lo', 'w') → 'low'
-词表: ['low', 'e', 'r', 's', 't', ' ']
+### 3.2 Byte-Level BPE (BBPE)
 
-Step 3: 合并 ('e', 'r') → 'er'
-词表: ['low', 'er', 's', 't', ' ']
+**核心思想**：直接在 UTF-8 字节序列上应用 BPE，而不是字符。
 
-... 继续直到达到目标词表大小
-```
+**优势**：
+- 完全消除未登录词问题（任何文本都能编码）
+- 更好的多语言支持
+- 词表更紧凑
 
-**分词过程**：按学习到的合并规则切分
+**使用 BBPE 的模型**：GPT-4、GPT-4o、Qwen 2、Claude
 
-```
-"lowest" → ['low', 'est']
-"slower" → ['s', 'low', 'er']
-```
+### 3.3 WordPiece
 
-**使用 BPE 的模型**：GPT 系列、LLaMA、Mistral、Qwen
+**核心思想**：选择使**语言模型似然最大化**的合并，而不是简单选频率最高的。
 
-### 3.2 WordPiece
-
-**核心思想**：选择使**语言模型似然最大化**的合并。
-
-```mermaid
-graph LR
-    subgraph BPE
-        B[选择频率最高的pair]
-    end
-    
-    subgraph WordPiece
-        W[选择合并后似然增益最大的pair]
-    end
-```
-
-**特点**：使用 `##` 标记非词首 token
-
-```
-"unhappiness" → ['un', '##hap', '##pi', '##ness']
-```
-
-`##` 前缀表示这个 token 是某个词的一部分，不是词的开头。
+**特点**：使用 ## 标记非词首 token。比如 "unhappiness" 会被切分为 un、##hap、##pi、##ness，其中 ## 前缀表示这个 token 是某个词的一部分，不是词的开头。
 
 **使用 WordPiece 的模型**：BERT、DistilBERT、ELECTRA
 
-### 3.3 Unigram (SentencePiece)
+### 3.4 Unigram (SentencePiece)
 
 **核心思想**：从大词表开始，逐步**删除**对似然影响最小的 token。
 
@@ -205,77 +172,38 @@ graph LR
 
 | Token | 作用 | 使用场景 |
 |-------|------|----------|
-| `[PAD]` | 填充 | 对齐批次中不同长度的序列 |
-| `[UNK]` | 未知词 | 词表外的 token（现代分词器很少用到） |
-| `[CLS]` | 分类 | BERT 用于获取句子表示 |
-| `[SEP]` | 分隔 | 分隔多个句子 |
-| `[MASK]` | 掩码 | BERT MLM 预训练 |
-| `<s>` / `</s>` | 句子边界 | 标记句子开始/结束 |
-| `<\|endoftext\|>` | 文档结束 | GPT 系列 |
-| `<\|im_start\|>` / `<\|im_end\|>` | 消息边界 | ChatML 格式 |
+| [PAD] | 填充 | 对齐批次中不同长度的序列 |
+| [UNK] | 未知词 | 词表外的 token（现代分词器很少用到） |
+| [CLS] | 分类 | BERT 用于获取句子表示 |
+| [SEP] | 分隔 | 分隔多个句子 |
+| [MASK] | 掩码 | BERT MLM 预训练 |
+| \<s\> / \</s\> | 句子边界 | 标记句子开始/结束 |
+| \<\|endoftext\|\> | 文档结束 | GPT 系列 |
+| \<\|im_start\|\> / \<\|im_end\|\> | 消息边界 | ChatML 格式 |
 
-## 5. 实战：使用分词器
+## 5. 分词器的使用流程
 
-### 5.1 HuggingFace Tokenizers
+### 5.1 编码过程
 
-```python
-from transformers import AutoTokenizer
+分词器的编码过程分为以下步骤：
 
-# 加载预训练分词器
-tokenizer = AutoTokenizer.from_pretrained("gpt2")
+1. **预处理**：对输入文本进行规范化处理，如大小写转换、Unicode 标准化等
+2. **切分**：根据算法（BPE/WordPiece/Unigram）将文本切分为 token 序列
+3. **映射**：将每个 token 转换为对应的数字 ID
+4. **添加特殊 token**：根据需要添加句首、句尾等特殊标记
 
-# 编码
-text = "Hello, how are you?"
-tokens = tokenizer.tokenize(text)
-print(f"Tokens: {tokens}")
-# ['Hello', ',', 'Ġhow', 'Ġare', 'Ġyou', '?']
-# Ġ 表示该 token 前有空格
+例如，对于文本 "Hello, how are you?"，GPT-2 分词器会：
+- 切分为 Hello、逗号、空格how、空格are、空格you、问号 六个 token
+- 其中空格会被编码到后面的 token 中，用特殊符号 G（代表空格）表示
+- 最终得到类似 15496、11、703、389、345、30 这样的 ID 序列
 
-ids = tokenizer.encode(text)
-print(f"IDs: {ids}")
-# [15496, 11, 703, 389, 345, 30]
+### 5.2 解码过程
 
-# 解码
-decoded = tokenizer.decode(ids)
-print(f"Decoded: {decoded}")
-# "Hello, how are you?"
+解码是编码的逆过程，将数字 ID 序列还原为原始文本。好的分词器应该保证编码后再解码能完全还原原文。
 
-# 批量编码
-batch = tokenizer(
-    ["Hello!", "How are you?"],
-    padding=True,
-    return_tensors="pt"
-)
-print(batch.input_ids)
-```
+### 5.3 批量处理
 
-### 5.2 OpenAI Tiktoken
-
-```python
-import tiktoken
-
-# 加载编码器
-enc = tiktoken.encoding_for_model("gpt-4")
-
-# 编码
-text = "Hello, world!"
-tokens = enc.encode(text)
-print(f"Tokens: {tokens}")  # [9906, 11, 1917, 0]
-print(f"Token count: {len(tokens)}")  # 4
-
-# 解码
-decoded = enc.decode(tokens)
-print(f"Decoded: {decoded}")  # "Hello, world!"
-
-# 查看每个token对应的文本
-for token_id in tokens:
-    print(f"{token_id} -> '{enc.decode([token_id])}'")
-```
-
-**Tiktoken 特点**：
-- OpenAI 官方实现，Rust 编写，速度极快
-- 支持 GPT-3.5、GPT-4、GPT-4o 等模型
-- 可用于计算 API 调用成本
+处理多个文本时，由于长度不同，需要进行填充（padding）使所有序列长度一致。同时会生成注意力掩码，告诉模型哪些位置是真实内容、哪些是填充。
 
 ## 6. 分词器的影响
 
@@ -296,8 +224,8 @@ graph TB
 | GPT-2 | 50,257 |
 | GPT-4 | 100,256 |
 | LLaMA | 32,000 |
-| LLaMA-2 | 32,000 |
-| Qwen | 151,851 |
+| LLaMA-3 | 128,000 |
+| Qwen 2 | 151,851 |
 
 ### 6.2 压缩率
 
@@ -309,65 +237,39 @@ graph TB
 
 ### 6.3 多语言挑战
 
-英文分词器在中文上表现差：
-
-```python
-# GPT-2 分词器处理中文
-tokenizer = AutoTokenizer.from_pretrained("gpt2")
-tokens = tokenizer.tokenize("你好世界")
-print(tokens)
-# ['ä', '½', 'ł', 'å', '¥', '½', 'ä', '¸', 'ĸ', 'ç', 'ķ', 'Į']
-# 每个汉字被拆成多个 byte！效率极低
-```
+英文分词器在中文上表现差。比如 GPT-2 分词器处理中文"你好世界"时，每个汉字会被拆成多个字节级别的 token，导致效率极低——4 个汉字可能变成 12 个 token。
 
 ```mermaid
 graph LR
     subgraph 英文优化的分词器
-        E["Hello world"] --> |2 tokens| E1
-        C1["你好世界"] --> |12 tokens| C2
+        E["Hello world"] --> |2 tokens| E1[效率高]
+        C1["你好世界"] --> |12 tokens| C2[效率低]
     end
     
     subgraph 多语言分词器
-        E2["Hello world"] --> |3 tokens| E3
-        C3["你好世界"] --> |4 tokens| C4
+        E2["Hello world"] --> |3 tokens| E3[略有损失]
+        C3["你好世界"] --> |4 tokens| C4[效率正常]
     end
 ```
 
 **解决方案**：
-- 训练多语言分词器（如 Qwen）
+- 训练多语言分词器（如 Qwen、Gemma）
 - 扩展词表添加中文 token（如 Chinese-LLaMA）
 - 使用 Byte-level BPE（如 GPT-4）
 
-## 7. 训练自己的分词器
+## 7. 最新技术进展
 
-```python
-from tokenizers import Tokenizer
-from tokenizers.models import BPE
-from tokenizers.trainers import BpeTrainer
-from tokenizers.pre_tokenizers import Whitespace
+### 7.1 领域自适应分词
 
-# 初始化 BPE 分词器
-tokenizer = Tokenizer(BPE(unk_token="[UNK]"))
-tokenizer.pre_tokenizer = Whitespace()
+2024 年的研究（如 ChipNeMo）表明，可以在预训练分词器基础上扩展领域专用词汇。方法是先在领域数据上训练新分词器，识别出基础词表中缺失的领域术语，然后将这些 token 添加到词表中。这种方法可以带来 1.6% 到 3.3% 的任务性能提升。
 
-# 定义训练器
-trainer = BpeTrainer(
-    vocab_size=30000,
-    min_frequency=2,
-    special_tokens=["[UNK]", "[PAD]", "[CLS]", "[SEP]", "[MASK]"]
-)
+### 7.2 分词器优化
 
-# 训练
-files = ["data/corpus.txt"]
-tokenizer.train(files, trainer)
+PickyBPE 等技术通过在训练时剔除低效的合并操作，消除那些很少被使用的"垃圾" token，在保持压缩效率的同时提升下游任务性能。
 
-# 保存
-tokenizer.save("my_tokenizer.json")
+### 7.3 字节级处理
 
-# 测试
-output = tokenizer.encode("Hello, world!")
-print(output.tokens)
-```
+Meta 的 BLT 架构完全抛弃传统分词，直接处理原始字节序列。通过动态分组字节为"补丁"（patches），实现了约 50% 的推理加速，同时对噪声更鲁棒，对低资源语言支持更好。
 
 ## 8. Token 与成本计算
 
@@ -383,20 +285,11 @@ graph LR
 | 模型 | 输入价格 | 输出价格 |
 |------|----------|----------|
 | GPT-4 Turbo | $10/1M tokens | $30/1M tokens |
-| GPT-4o | $5/1M tokens | $15/1M tokens |
-| Claude 3 Sonnet | $3/1M tokens | $15/1M tokens |
+| GPT-4o | $2.5/1M tokens | $10/1M tokens |
+| Claude 3.5 Sonnet | $3/1M tokens | $15/1M tokens |
 | Claude 3 Haiku | $0.25/1M tokens | $1.25/1M tokens |
 
-**估算示例**：
-```python
-import tiktoken
-
-enc = tiktoken.encoding_for_model("gpt-4o")
-text = "你的长文本..."
-num_tokens = len(enc.encode(text))
-cost = num_tokens * 0.000005  # $5/1M tokens
-print(f"预计成本: ${cost:.4f}")
-```
+**成本估算**：要估算 API 调用成本，首先需要用对应模型的分词器计算文本的 token 数量，然后乘以单价即可。OpenAI 提供的 tiktoken 库可以方便地进行这一计算。
 
 ## 9. 本章小结
 
@@ -409,11 +302,12 @@ mindmap
     粒度选择
       字符级
       词级
-      子词级⭐️
+      子词级-主流
     主流算法
       BPE
       WordPiece
       Unigram
+      Byte-Level BPE
     实践要点
       特殊Token
       多语言支持
@@ -421,10 +315,11 @@ mindmap
 ```
 
 **核心要点**：
-- ✅ 分词器是 LLM 的"翻译官"，将文本转为数字
-- ✅ 子词分词（BPE、WordPiece、Unigram）是现代主流
-- ✅ 分词质量直接影响模型性能和推理成本
-- ✅ 多语言场景需要特别关注分词器的选择
+- 分词器是 LLM 的"翻译官"，将文本转为数字
+- 子词分词（BPE、WordPiece、Unigram）是现代主流
+- 分词质量直接影响模型性能和推理成本
+- 多语言场景需要特别关注分词器的选择
+- Byte-Level BPE 正在成为新趋势，提供更好的跨语言支持
 
 ## 延伸阅读
 

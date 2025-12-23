@@ -195,25 +195,12 @@ graph TB
 
 ### 4.2 统一的生成范式
 
-Decoder-only 可以统一处理各种任务：
+Decoder-only 可以统一处理各种任务，只需要改变提示词的格式：
 
-```python
-# 分类任务
-prompt = "这部电影太棒了！情感是："
-output = "正面"
-
-# 翻译任务
-prompt = "翻译成英文：今天天气真好"
-output = "The weather is nice today"
-
-# 代码生成
-prompt = "写一个Python函数计算斐波那契数列："
-output = "def fibonacci(n):..."
-
-# 问答任务
-prompt = "问题：地球到月球的距离是多少？答案："
-output = "约38万公里"
-```
+- **分类任务**：输入 "这部电影太棒了！情感是："，模型输出 "正面"
+- **翻译任务**：输入 "翻译成英文：今天天气真好"，模型输出 "The weather is nice today"
+- **代码生成**：输入 "写一个Python函数计算斐波那契数列："，模型输出相应代码
+- **问答任务**：输入 "问题：地球到月球的距离是多少？答案："，模型输出 "约38万公里"
 
 **一个模型，所有任务**——这就是 In-Context Learning 的魔力。
 
@@ -254,17 +241,11 @@ graph TB
     M --> R["1 = 可以attend<br/>0 = 不可以attend<br/>下三角矩阵"]
 ```
 
-```python
-def causal_attention_mask(seq_len):
-    """生成因果注意力掩码"""
-    mask = torch.tril(torch.ones(seq_len, seq_len))
-    return mask  # 下三角矩阵
+**工作原理**：
 
-# 应用掩码
-attention_scores = Q @ K.T / sqrt(d_k)
-attention_scores = attention_scores.masked_fill(mask == 0, float('-inf'))
-attention_weights = softmax(attention_scores)  # -inf → 0
-```
+因果掩码是一个下三角矩阵，用于控制每个位置能"看到"哪些位置。生成掩码时，矩阵中位置 (i, j) 为 1 表示位置 i 可以关注位置 j，为 0 则不可以。由于我们希望每个位置只能看到它之前的位置（包括自己），所以掩码是下三角形式。
+
+在计算注意力分数后，将掩码为 0 的位置设为负无穷大，这样经过 Softmax 后这些位置的权重就会变成 0，从而实现了因果性约束。
 
 ## 6. Self-Attention 核心计算
 
@@ -283,28 +264,13 @@ graph LR
     V --> O
 ```
 
-```python
-def self_attention(Q, K, V, mask=None):
-    """
-    Q, K, V: (batch, seq_len, d_model)
-    """
-    d_k = K.shape[-1]
-    
-    # 1. 计算注意力分数
-    scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(d_k)
-    
-    # 2. 应用掩码（如果有）
-    if mask is not None:
-        scores = scores.masked_fill(mask == 0, float('-inf'))
-    
-    # 3. Softmax 归一化
-    attention_weights = F.softmax(scores, dim=-1)
-    
-    # 4. 加权求和
-    output = torch.matmul(attention_weights, V)
-    
-    return output, attention_weights
-```
+**计算步骤**：
+
+1. **线性投影**：将输入 X 分别通过三个不同的线性变换，得到 Query、Key、Value
+2. **计算注意力分数**：Query 和 Key 的转置做矩阵乘法，再除以 Key 维度的平方根（缩放因子）
+3. **应用掩码**：如果是因果注意力，将掩码为 0 的位置设为负无穷
+4. **Softmax 归一化**：将分数转换为概率分布
+5. **加权求和**：用注意力权重对 Value 进行加权求和，得到最终输出
 
 ### 6.2 多头注意力 (Multi-Head Attention)
 
@@ -326,43 +292,17 @@ graph TB
     W --> O[输出]
 ```
 
-```python
-class MultiHeadAttention(nn.Module):
-    def __init__(self, d_model, num_heads):
-        super().__init__()
-        self.num_heads = num_heads
-        self.d_k = d_model // num_heads
-        
-        self.W_q = nn.Linear(d_model, d_model)
-        self.W_k = nn.Linear(d_model, d_model)
-        self.W_v = nn.Linear(d_model, d_model)
-        self.W_o = nn.Linear(d_model, d_model)
-    
-    def forward(self, x, mask=None):
-        batch_size, seq_len, d_model = x.shape
-        
-        # 线性投影
-        Q = self.W_q(x)  # (batch, seq, d_model)
-        K = self.W_k(x)
-        V = self.W_v(x)
-        
-        # 分头: (batch, num_heads, seq_len, d_k)
-        Q = Q.view(batch_size, seq_len, self.num_heads, self.d_k).transpose(1, 2)
-        K = K.view(batch_size, seq_len, self.num_heads, self.d_k).transpose(1, 2)
-        V = V.view(batch_size, seq_len, self.num_heads, self.d_k).transpose(1, 2)
-        
-        # 注意力计算
-        scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.d_k)
-        if mask is not None:
-            scores = scores.masked_fill(mask == 0, float('-inf'))
-        attention = F.softmax(scores, dim=-1)
-        
-        # 加权求和并合并多头
-        output = torch.matmul(attention, V)
-        output = output.transpose(1, 2).contiguous().view(batch_size, seq_len, d_model)
-        
-        return self.W_o(output)
-```
+**工作原理**：
+
+多头注意力的核心思想是将模型维度分成多个"头"，每个头独立地进行注意力计算。具体步骤如下：
+
+1. **线性投影**：对输入进行线性变换得到 Q、K、V
+2. **分头**：将 Q、K、V 沿隐藏维度拆分成多个头，每个头有独立的子空间
+3. **并行注意力**：每个头独立计算注意力，可以学习不同类型的关系
+4. **合并**：将所有头的输出拼接起来
+5. **输出投影**：通过一个线性层将拼接结果映射回原始维度
+
+这样设计的好处是：不同的注意力头可以关注不同的信息，比如有的头关注语法关系，有的头关注语义关系，有的头关注局部信息。
 
 ## 7. 完整的 Decoder Block
 
@@ -383,28 +323,19 @@ graph TB
     ADD2 --> OUT[输出]
 ```
 
-```python
-class DecoderBlock(nn.Module):
-    def __init__(self, d_model, num_heads, d_ff, dropout=0.1):
-        super().__init__()
-        self.attention = MultiHeadAttention(d_model, num_heads)
-        self.norm1 = RMSNorm(d_model)  # 现代LLM使用RMSNorm
-        self.ffn = SwiGLU(d_model, d_ff)  # 现代LLM使用SwiGLU
-        self.norm2 = RMSNorm(d_model)
-        self.dropout = nn.Dropout(dropout)
-    
-    def forward(self, x, mask=None):
-        # Pre-Norm 结构 (现代 LLM 标配)
-        # Self-Attention
-        attn_out = self.attention(self.norm1(x), mask)
-        x = x + self.dropout(attn_out)
-        
-        # Feed-Forward Network
-        ffn_out = self.ffn(self.norm2(x))
-        x = x + self.dropout(ffn_out)
-        
-        return x
-```
+**结构说明**：
+
+现代 LLM 的 Decoder Block 采用 Pre-Norm 结构，即在每个子层之前进行归一化。完整流程如下：
+
+1. **第一个子层（Self-Attention）**：
+   - 首先对输入进行 RMSNorm
+   - 然后通过 Self-Attention
+   - 将输出与原始输入相加（残差连接）
+
+2. **第二个子层（Feed-Forward）**：
+   - 对残差结果进行 RMSNorm
+   - 通过前馈神经网络（现代 LLM 使用 SwiGLU）
+   - 再次进行残差连接
 
 ### Pre-Norm vs Post-Norm
 
@@ -419,7 +350,7 @@ graph LR
     end
 ```
 
-**Pre-Norm 优势**：训练更稳定，尤其对于深层网络（100+ 层）。
+**Pre-Norm 优势**：训练更稳定，尤其对于深层网络（100+ 层）。原始 Transformer 使用 Post-Norm，但实践证明 Pre-Norm 对深层网络更友好。
 
 ## 8. 现代 LLM 架构改进
 
@@ -452,22 +383,11 @@ graph TB
 
 ### 8.1 RMSNorm (Root Mean Square Normalization)
 
-比 LayerNorm 更高效，去掉了均值中心化：
+比 LayerNorm 更高效，去掉了均值中心化。
 
-```python
-class RMSNorm(nn.Module):
-    def __init__(self, dim, eps=1e-6):
-        super().__init__()
-        self.eps = eps
-        self.weight = nn.Parameter(torch.ones(dim))
-    
-    def forward(self, x):
-        # 只计算均方根，不减均值
-        rms = torch.sqrt(torch.mean(x ** 2, dim=-1, keepdim=True) + self.eps)
-        return x / rms * self.weight
-```
+**工作原理**：RMSNorm 只计算输入的均方根进行归一化，而 LayerNorm 需要先减去均值再除以标准差。数学上，RMSNorm 计算输入各元素平方的均值再开方，用这个值对输入进行缩放，最后乘以可学习的缩放参数。
 
-**优势**：减少约 10% 计算量，效果相当。
+**优势**：减少约 10% 计算量，效果与 LayerNorm 相当。
 
 ### 8.2 RoPE (Rotary Position Embedding)
 
@@ -487,23 +407,7 @@ graph LR
     end
 ```
 
-**核心思想**：通过旋转 Q、K 向量来编码位置信息。
-
-```python
-def apply_rope(x, cos, sin):
-    """应用旋转位置编码"""
-    # x: (batch, seq, heads, dim)
-    x1 = x[..., ::2]   # 偶数维度
-    x2 = x[..., 1::2]  # 奇数维度
-    
-    # 旋转操作
-    x_rotated = torch.cat([
-        x1 * cos - x2 * sin,
-        x1 * sin + x2 * cos
-    ], dim=-1)
-    
-    return x_rotated
-```
+**核心思想**：通过旋转 Q、K 向量来编码位置信息。将向量的相邻两个维度视为二维平面上的点，根据位置索引进行旋转。旋转后的 Q 和 K 做内积，结果自然地包含了相对位置信息。
 
 ### 8.3 GQA (Grouped Query Attention)
 
@@ -539,26 +443,15 @@ graph TB
 | **GQA** | Q头数/g | 中 | 较快 | 接近MHA |
 | **MQA** | 1 | 低 | 最快 | 有损失 |
 
-**GQA 是现代 LLM 的首选**（LLaMA-2/3、Mistral 等）。
+**GQA 是现代 LLM 的首选**（LLaMA-2/3、Mistral 等）。它让多个 Query 头共享同一组 Key 和 Value，减少了 KV Cache 的显存占用，同时保持接近 MHA 的效果。
 
 ### 8.4 SwiGLU 激活
 
-结合 Swish 和 GLU 的优势：
+结合 Swish 和 GLU 的优势。
 
-```python
-class SwiGLU(nn.Module):
-    def __init__(self, d_model, d_ff):
-        super().__init__()
-        self.w1 = nn.Linear(d_model, d_ff, bias=False)  # gate
-        self.w2 = nn.Linear(d_ff, d_model, bias=False)  # down
-        self.w3 = nn.Linear(d_model, d_ff, bias=False)  # up
-    
-    def forward(self, x):
-        # SwiGLU = Swish(xW1) ⊙ (xW3)
-        return self.w2(F.silu(self.w1(x)) * self.w3(x))
-```
+**工作原理**：SwiGLU 是一种门控线性单元，它将输入通过两个线性变换，一个分支经过 Swish 激活函数（也称 SiLU），另一个分支保持线性，两者逐元素相乘后再通过一个线性层输出。
 
-**优势**：比 ReLU/GELU 有更好的性能，是 LLaMA、PaLM 等模型的选择。
+**优势**：比 ReLU/GELU 有更好的性能，是 LLaMA、PaLM、Qwen 等模型的选择。
 
 ### 8.5 FlashAttention
 
@@ -581,7 +474,7 @@ graph LR
     S2 --> |优化| F2
 ```
 
-**核心思想**：利用 GPU 内存层次结构，通过分块（tiling）减少 HBM 访问。
+**核心思想**：利用 GPU 内存层次结构，通过分块（tiling）减少对高带宽内存（HBM）的访问。标准注意力需要将完整的注意力矩阵存储在 HBM 中，而 FlashAttention 将计算分成小块，在更快的 SRAM 中完成中间计算，只将最终结果写回 HBM。
 
 ## 9. 计算复杂度分析
 
@@ -638,10 +531,10 @@ mindmap
 ```
 
 **核心要点**：
-- ✅ Transformer 衍生出三大架构，Decoder-only 成为 LLM 主流
-- ✅ 因果掩码是 Decoder-only 架构的核心
-- ✅ 现代 LLM 采用 RMSNorm、RoPE、GQA、SwiGLU 等改进
-- ✅ FlashAttention 通过优化内存访问大幅提升效率
+- Transformer 衍生出三大架构，Decoder-only 成为 LLM 主流
+- 因果掩码是 Decoder-only 架构的核心
+- 现代 LLM 采用 RMSNorm、RoPE、GQA、SwiGLU 等改进
+- FlashAttention 通过优化内存访问大幅提升效率
 
 ## 思考题
 
@@ -651,10 +544,10 @@ mindmap
 
 ## 延伸阅读
 
-- 📄 [Attention Is All You Need (2017)](https://arxiv.org/abs/1706.03762) - Transformer 原始论文
-- 📄 [LLaMA: Open and Efficient Foundation Language Models (2023)](https://arxiv.org/abs/2302.13971)
-- 📄 [FlashAttention: Fast and Memory-Efficient Exact Attention (2022)](https://arxiv.org/abs/2205.14135)
-- 📄 [RoFormer: Enhanced Transformer with Rotary Position Embedding (2021)](https://arxiv.org/abs/2104.09864)
+- [Attention Is All You Need (2017)](https://arxiv.org/abs/1706.03762) - Transformer 原始论文
+- [LLaMA: Open and Efficient Foundation Language Models (2023)](https://arxiv.org/abs/2302.13971)
+- [FlashAttention: Fast and Memory-Efficient Exact Attention (2022)](https://arxiv.org/abs/2205.14135)
+- [RoFormer: Enhanced Transformer with Rotary Position Embedding (2021)](https://arxiv.org/abs/2104.09864)
 
 ---
 
