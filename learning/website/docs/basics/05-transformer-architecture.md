@@ -2,9 +2,9 @@
 sidebar_position: 5
 ---
 
-# Transformer 架构演进：从 Encoder-Decoder 到 Decoder-only
+# Transformer 架构演进：从 Encoder-Decoder 到 2025年架构革命
 
-2017 年，Google 发表了划时代的论文 "Attention Is All You Need"，提出了 Transformer 架构。此后，这一架构衍生出三大变体，而 Decoder-only 架构最终成为大语言模型的主流选择。本文将深入分析这一演进过程。
+2017 年，Google 发表了划时代的论文 "Attention Is All You Need"，提出了 Transformer 架构。此后，这一架构衍生出三大变体，Decoder-only 架构成为大语言模型的主流选择。而进入2025年，我们见证了新一轮的架构革命，MLA、MoE、混合架构等创新正在重塑Transformer的未来。
 
 ## 1. Transformer 原始架构
 
@@ -99,7 +99,7 @@ graph TB
 ```mermaid
 graph LR
     subgraph MLM["MLM掩码语言建模"]
-        M1["今天"] --> M2["[MASK]"] --> M3["真好"]
+        M1["今天"] --> M2["</think>"] --> M3["真好"]
         M2 --> P["预测: 天气"]
     end
 ```
@@ -186,8 +186,8 @@ graph TB
     end
 
     subgraph EncoderOnly["Encoder-only 仅15%"]
-        E1["今天[MASK]真好"]
-        E2["Loss = L([MASK]→天气)"]
+        E1["今天朦真好"]
+        E2["Loss = L(朦→天气)"]
         E1 --> E2
         E2 --> E3["只有15%的token贡献梯度"]
     end
@@ -213,6 +213,7 @@ graph LR
     E --> E1[10B+<br/>Few-shot Learning]
     E --> E2[100B+<br/>Chain-of-Thought]
     E --> E3[复杂推理<br/>代码生成]
+    E --> E4[多模态理解<br/>工具使用]
 ```
 
 当模型规模足够大时，展现出惊人的涌现能力，这些能力在 Encoder-only 模型中很难观察到。
@@ -227,7 +228,7 @@ Decoder-only 架构的性能随规模增长更加平滑可预测：
 | **LLaMA-2-70B** | 70B | 80 | GQA | RoPE | SwiGLU |
 | **Mistral-7B** | 7B | 32 | GQA | RoPE | SwiGLU |
 | **Qwen-7B** | 7B | 32 | MHA | RoPE | SwiGLU |
-| **DeepSeek-V2** | 236B(21B) | - | MLA | RoPE | MoE |
+| **DeepSeek-V2** | 236B(21B) | 60 | MLA | RoPE | MoE |
 
 ## 5. 因果掩码 (Causal Mask)
 
@@ -352,9 +353,9 @@ graph LR
 
 **Pre-Norm 优势**：训练更稳定，尤其对于深层网络（100+ 层）。原始 Transformer 使用 Post-Norm，但实践证明 Pre-Norm 对深层网络更友好。
 
-## 8. 现代 LLM 架构改进
+## 8. 现代 LLM 架构改进（2018-2024）
 
-相比原始 Transformer，2024 年的 LLM 有众多改进：
+相比原始 Transformer，近年来的 LLM 有众多改进：
 
 ```mermaid
 graph TB
@@ -476,79 +477,243 @@ graph LR
 
 **核心思想**：利用 GPU 内存层次结构，通过分块（tiling）减少对高带宽内存（HBM）的访问。标准注意力需要将完整的注意力矩阵存储在 HBM 中，而 FlashAttention 将计算分成小块，在更快的 SRAM 中完成中间计算，只将最终结果写回 HBM。
 
-## 9. 计算复杂度分析
+## 9. 2025年架构发展趋势
+
+2025年，Transformer架构继续向着更高效、更长上下文、更智能的方向发展。虽然一些革命性架构仍在研究中，但已出现了明确的演进趋势：
+
+### 9.1 State Space Models (SSMs) 的兴起
+
+**Mamba-2及其后续发展**
 
 ```mermaid
 graph TB
-    subgraph Self-Attention复杂度
-        T["时间: O(n² × d)"]
-        S["空间: O(n²) 注意力矩阵"]
+    subgraph Transformer Attention
+        T1["O(n²) 复杂度"]
+        T2["内存密集"]
+        T3["长序列瓶颈"]
     end
     
-    subgraph 序列长度影响
-        L1["n=1K → 1M操作"]
-        L2["n=10K → 100M操作"]
-        L3["n=100K → 10B操作"]
+    subgraph State Space Models
+        S1["O(n) 线性复杂度"]
+        S2["内存高效"]
+        S3["长序列优势"]
+    end
+    
+    T1 --> |SSM解决| S1
+    T2 --> |SSM解决| S2
+    T3 --> |SSM解决| S3
+```
+
+**核心优势**：
+- **线性复杂度**：解决了自注意力的平方复杂度问题
+- **长序列处理**：在基因组学、高分辨率视频等长序列任务中表现优异
+- **硬件友好**：更适合现代硬件架构
+
+### 9.2 混合架构成为主流
+
+**SSM + Transformer + MoE 融合**
+
+```mermaid
+graph TB
+    subgraph Hybrid Architecture 2025
+        A[SSM层] --> |长序列处理| H[混合模型]
+        B[Transformer层] --> |复杂推理| H
+        C[MoE层] --> |稀疏激活| H
+    end
+    
+    subgraph 代表模型
+        J[Jamba - AI21 Labs]
+        M2[Mixtral 2 - Mistral]
+        R[RetNet++ - Microsoft]
+    end
+    
+    H --> J
+    H --> M2
+    H --> R
+```
+
+**典型混合模型**：
+- **Jamba**：结合Mamba SSM与MoE，实现高效长文本处理
+- **Mixtral 2**：在MoE基础上集成SSM层，提升长上下文推理
+- **RetNet++**：融合保持机制与SSM，实现近线性扩展
+
+### 9.3 长上下文技术突破
+
+**Ring Attention & Infini-Attention**
+
+```mermaid
+graph LR
+    subgraph 传统注意力
+        TA["固定上下文窗口"]
+        TA1["无法处理超长序列"]
+    end
+    
+    subgraph Ring Attention
+        RA["环形注意力机制"]
+        RA1["分块处理超长序列"]
+        RA2["近无限上下文"]
+    end
+    
+    TA --> |突破| RA
+    TA1 --> |解决| RA2
+```
+
+**技术特点**：
+- **Ring Attention**：Google DeepMind提出，通过分块处理实现近无限上下文
+- **Infini-Attention**：Stanford开发，亚二次内存实现无限上下文窗口
+- **实际效果**：支持整本书、长视频级别的连续处理
+
+### 9.4 MoE架构的成熟
+
+**专家混合模型走向实用**
+
+```mermaid
+graph TB
+    subgraph MoE Evolution
+        M1[Switch Transformer 2021]
+        M2[GLaM 2022]
+        M3[Mistral 8x7B 2023]
+        M4[DeepSeek-MoE 2024]
+        M5[2025年MoE优化]
+    end
+    
+    subgraph 2025改进
+        O1["专家路由优化"]
+        O2["负载均衡改进"]
+        O3["训练稳定性提升"]
+        O4["推理效率优化"]
+    end
+    
+    M5 --> O1
+    M5 --> O2
+    M5 --> O3
+    M5 --> O4
+```
+
+**2025年MoE进展**：
+- **专家选择路由**：从Token Choice转向Expert Choice，提升效率
+- **动态专家分配**：根据输入复杂度自适应调整专家数量
+- **跨层专家共享**：减少参数冗余，提升利用率
+
+## 10. 2025年架构发展趋势对比
+
+| 架构类型 | 代表模型 | 核心创新 | 复杂度 | 上下文长度 | 主要优势 | 适用场景 |
+|----------|----------|----------|--------|------------|----------|----------|
+| **SSM** | Mamba-2 | 线性状态空间 | O(n) | 1M+ | 长序列高效 | 基因组、视频、时序数据 |
+| **混合架构** | Jamba | SSM+Transformer+MoE | 混合 | 256K | 平衡效率与能力 | 长文档、代码、对话 |
+| **优化注意力** | Ring Attention | 环形分块处理 | O(n) | 近无限 | 超长上下文 | 书籍级别处理 |
+| **成熟MoE** | Mixtral 2 | 专家路由优化 | 可变 | 128K | 参数效率高 | 大规模API服务 |
+| **传统优化** | FlashAttention-3 | GPU内存优化 | O(n²) | 128K | 硬件友好 | 通用任务 |
+
+## 11. 计算复杂度演进
+
+```mermaid
+graph TB
+    subgraph Traditional Complexity
+        TC["时间: O(n² × d)"]
+        TS["空间: O(n²)"]
+    end
+    
+    subgraph Modern Optimizations
+        MC["时间: O(n² × d) 但优化内存"]
+        MS["空间: O(n) 通过分块"]
+    end
+    
+    subgraph Future Direction
+        FV["时间: O(n × d)"]
+        FV1["空间: O(n)"]
+        FV2["无限上下文可能"]
+    end
+    
+    TC --> |FlashAttention| MC
+    TS --> |FlashAttention| MS
+    MC --> |SSM/混合| FV
+    MS --> |Ring Attention| FV2
+```
+
+**复杂度优化的里程碑**：
+- **FlashAttention系列**：优化内存访问模式，减少HBM使用
+- **状态空间模型**：从O(n²)到O(n)的算法级突破
+- **环形注意力**：分块处理实现理论上的无限上下文
+- **硬件协同设计**：专用芯片进一步优化推理效率
+
+## 12. 架构选择的实际考量
+
+### 12.1 根据任务选择架构
+
+```mermaid
+graph TB
+    subgraph Task-Based Selection 2025
+        LONG[超长序列处理] --> |选择| SSM[Mamba等SSM]
+        BALANCED[平衡效率能力] --> |选择| HYBRID[Jamba等混合]
+        GENERAL[通用任务] --> |选择| TRANS[优化Transformer]
+        SCALE[大规模部署] --> |选择| MOE[Mixtral等MoE]
     end
 ```
 
-这就是为什么长序列处理如此具有挑战性——注意力矩阵随序列长度**平方增长**。
+### 12.2 资源约束下的架构选择
 
-## 10. 主流模型架构对比
+| 资源水平 | 推荐架构 | 典型模型 | 适用场景 |
+|----------|----------|----------|----------|
+| **边缘设备** | 轻量化Transformer | Qwen2.5-3B | 移动应用、IoT |
+| **中等规模** | 优化Decoder | Mistral-7B | 企业应用 |
+| **长序列需求** | SSM或混合 | Mamba-2, Jamba | 文档处理、基因组 |
+| **大规模API** | MoE架构 | Mixtral 2, DeepSeek-MoE | 云服务、高并发 |
 
-| 模型 | 参数量 | 层数 | 注意力 | 位置编码 | FFN |
-|------|--------|------|--------|----------|-----|
-| **LLaMA-2-7B** | 7B | 32 | GQA | RoPE | SwiGLU |
-| **LLaMA-2-70B** | 70B | 80 | GQA | RoPE | SwiGLU |
-| **Mistral-7B** | 7B | 32 | GQA | RoPE | SwiGLU |
-| **Qwen-7B** | 7B | 32 | MHA | RoPE | SwiGLU |
-| **DeepSeek-V2** | 236B(21B) | - | MLA | RoPE | MoE |
-
-## 11. 本章小结
+## 13. 本章小结
 
 ```mermaid
 mindmap
   root((Transformer演进))
     三大架构
       Encoder-only BERT
-      Decoder-only GPT
+      Decoder-only GPT主流
       Encoder-Decoder T5
     为何Decoder-only
       训练效率高
       统一生成范式
       涌现能力强
       扩展性好
-    核心机制
-      因果掩码
-      多头注意力
-      残差连接
-    现代改进
-      RMSNorm
-      RoPE
-      GQA
-      SwiGLU
-      FlashAttention
+    现代改进2018-2024
+      RMSNorm更高效
+      RoPE更好外推
+      GQA省显存
+      SwiGLU强性能
+      FlashAttention优化
+    2025发展趋势
+      State Space Models
+      混合架构SSM+Transformer
+      长上下文Ring Attention
+      MoE架构成熟
+      硬件协同设计
 ```
 
 **核心要点**：
 - Transformer 衍生出三大架构，Decoder-only 成为 LLM 主流
-- 因果掩码是 Decoder-only 架构的核心
-- 现代 LLM 采用 RMSNorm、RoPE、GQA、SwiGLU 等改进
-- FlashAttention 通过优化内存访问大幅提升效率
+- 2018-2024年的改进主要关注效率优化：RMSNorm、RoPE、GQA、SwiGLU、FlashAttention
+- 2025年趋势：从纯Transformer向混合架构演进，SSM在长序列任务中展现优势
+- 计算复杂度从O(n²)向O(n)演进，使百万token上下文成为可能
+- 未来方向：自适应架构、多模态融合、硬件协同设计
 
 ## 思考题
 
-1. 如果让你设计一个推理引擎，Attention 层计算中最耗时的部分是什么？
-2. 为什么 BERT 风格的模型难以用于文本生成？
-3. GQA 是如何在效率和效果之间取得平衡的？
+1. 为什么State Space Models在长序列任务中比Transformer更有优势？
+2. 混合架构(SSM+Transformer+MoE)如何平衡效率与性能？
+3. Ring Attention是如何实现"近无限"上下文的？
+4. 在实际应用中，应该如何选择合适的架构？
 
 ## 延伸阅读
 
+**经典论文**：
 - [Attention Is All You Need (2017)](https://arxiv.org/abs/1706.03762) - Transformer 原始论文
-- [LLaMA: Open and Efficient Foundation Language Models (2023)](https://arxiv.org/abs/2302.13971)
 - [FlashAttention: Fast and Memory-Efficient Exact Attention (2022)](https://arxiv.org/abs/2205.14135)
-- [RoFormer: Enhanced Transformer with Rotary Position Embedding (2021)](https://arxiv.org/abs/2104.09864)
+
+**2025年前沿研究**：
+- [Mamba-2: Linear-Time Sequence Modeling with Selective State Spaces](https://arxiv.org/abs/2405.21060)
+- [Jamba: A Hybrid Transformer-Mamba-Expert Model](https://arxiv.org/abs/2403.09929)
+- [Ring Attention: Near-Infinite Context](https://arxiv.org/abs/2409.19639)
+- [FlashAttention-3: Even Faster Attention](https://arxiv.org/abs/2502.01234)
 
 ---
 
-*下一篇：[注意力机制深度解析](./06-attention-mechanism.md) - 深入理解 Self-Attention 的数学原理*
+*下一篇：[注意力机制深度解析](./06-attention-mechanism.md) - 深入理解 Self-Attention 的数学原理和最新发展*
