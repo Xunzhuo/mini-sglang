@@ -52,12 +52,6 @@ const config: Config = {
       },
       items: [
         {
-          type: 'docSidebar',
-          sidebarId: 'tutorialSidebar',
-          position: 'left',
-          label: '教程',
-        },
-        {
           href: 'https://github.com/sgl-project/mini-sglang',
           label: 'GitHub',
           position: 'right',
