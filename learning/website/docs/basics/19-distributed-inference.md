@@ -258,10 +258,10 @@ HACK PP优势:
 graph TB
     subgraph "2025混合并行架构"
         HACK[HACK压缩] --> Select[策略选择]
-        
-        Select --> Small[小模型(<100B)]
-        Select --> Medium[中模型(100B-1T)]
-        Select --> Large[大模型(>1T)]
+
+        Select --> Small[小模型 小于100B]
+        Select --> Medium[中模型 100B到1T]
+        Select --> Large[大模型 大于1T]
         
         Small --> Single[单卡+Nexus]
         Medium --> TP2[HACK张量并行]
@@ -453,10 +453,10 @@ graph TB
 2025年部署建议:
 实时对话场景:
 - 推荐: HACK单卡 + Nexus
-- 延迟: <50ms
+- 延迟: 小于50ms
 - 成本: 降低85%
 
-企业级应用:  
+企业级应用:
 - 推荐: HACK张量并行
 - 吞吐量: 最大化
 - 成本: 降低80%

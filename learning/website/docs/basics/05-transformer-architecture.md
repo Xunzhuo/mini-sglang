@@ -461,12 +461,12 @@ graph TB
 ```mermaid
 graph LR
     subgraph Standard["标准Attention"]
-        S1["O(n²)显存"]
+        S1["平方级显存"]
         S2["多次HBM访问"]
     end
 
     subgraph Flash["FlashAttention"]
-        F1["O(n)显存"]
+        F1["线性显存"]
         F2["分块计算"]
         F3["最少HBM访问"]
     end
@@ -488,13 +488,13 @@ graph LR
 ```mermaid
 graph TB
     subgraph Transformer Attention
-        T1["O(n²) 复杂度"]
+        T1["平方复杂度"]
         T2["内存密集"]
         T3["长序列瓶颈"]
     end
-    
+
     subgraph State Space Models
-        S1["O(n) 线性复杂度"]
+        S1["线性复杂度"]
         S2["内存高效"]
         S3["长序列优势"]
     end
@@ -610,18 +610,18 @@ graph TB
 ```mermaid
 graph TB
     subgraph Traditional Complexity
-        TC["时间: O(n² × d)"]
-        TS["空间: O(n²)"]
+        TC["时间: 平方级"]
+        TS["空间: 平方级"]
     end
-    
+
     subgraph Modern Optimizations
-        MC["时间: O(n² × d) 但优化内存"]
-        MS["空间: O(n) 通过分块"]
+        MC["时间: 平方级但优化内存"]
+        MS["空间: 线性级通过分块"]
     end
-    
+
     subgraph Future Direction
-        FV["时间: O(n × d)"]
-        FV1["空间: O(n)"]
+        FV["时间: 线性级"]
+        FV1["空间: 线性级"]
         FV2["无限上下文可能"]
     end
     
