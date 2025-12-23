@@ -5,7 +5,7 @@ const sidebars: SidebarsConfig = {
     {
       type: 'doc',
       id: 'intro',
-      label: '📚 学习总览',
+      label: '📚 教程总览',
     },
     {
       type: 'category',
@@ -15,17 +15,17 @@ const sidebars: SidebarsConfig = {
         {
           type: 'doc',
           id: 'resources/video-tutorials',
-          label: '🎬 视频教程',
+          label: '视频教程',
         },
         {
           type: 'doc',
           id: 'resources/papers',
-          label: '📄 经典论文',
+          label: '经典论文',
         },
         {
           type: 'doc',
           id: 'resources/projects',
-          label: '🚀 开源项目',
+          label: '开源项目',
         },
       ],
     },
@@ -176,6 +176,21 @@ const sidebars: SidebarsConfig = {
               type: 'doc',
               id: 'basics/semantic-routing',
               label: '语义路由系统',
+            },
+            {
+              type: 'doc',
+              id: 'basics/context-engineering',
+              label: 'Context Engineering 上下文工程',
+            },
+            {
+              type: 'doc',
+              id: 'basics/model-evaluation',
+              label: '大模型评测 Evaluation',
+            },
+            {
+              type: 'doc',
+              id: 'basics/building-agents',
+              label: '理解 LLM Agent',
             },
           ],
         },

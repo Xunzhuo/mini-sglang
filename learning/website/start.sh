@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 从零学习 LLM 推理
+# 从零学习 LLM
 # 本地开发服务器启动脚本
 
 echo "🚀 启动 Docusaurus 开发服务器..."

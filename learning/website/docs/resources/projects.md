@@ -19,7 +19,7 @@ description: LLM 领域核心开源项目推荐
 
 **教学项目：**
 
-- [**mini-sglang**](https://github.com/sgl-project/mini-sglang) - 从零学习 LLM 推理系统，代码简洁易懂
+- [**mini-sglang**](https://github.com/sgl-project/mini-sglang) - 从零学习 LLM系统，代码简洁易懂
 
 ---
 

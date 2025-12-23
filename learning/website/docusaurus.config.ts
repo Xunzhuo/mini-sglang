@@ -3,7 +3,7 @@ import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
-  title: '从零学习 LLM 推理',
+  title: '从零学习 LLM',
   tagline: '面向 LLM 初学者，从基础知识出发到 SGLang，理解大语言模型',
   favicon: 'img/favicon.ico',
 
